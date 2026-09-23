@@ -1,9 +1,10 @@
+import { importMessage, type ImportCode, type ImportIssue } from '../shared/import-i18n.js';
 import type { Dataset, Employee, History, Levels } from '../shared/types.js';
 import { validDate } from './calculation.js';
 import { normalizeHistory, parseHistoryCsv, unwrap } from './source.js';
 
-export interface ImportError { row: number; field: string; message: string }
-export interface ImportResult { valid: boolean; errors: ImportError[]; warnings: string[]; employees: Employee[]; history: History[]; counts: { employees: number; history: number } }
+export interface ImportError { row: number; field: string; message: string; code: ImportCode; message_key: string }
+export interface ImportResult { valid: boolean; errors: ImportError[]; warnings: string[]; warning_details: ImportIssue[]; employees: Employee[]; history: History[]; counts: { employees: number; history: number } }
 
 const GRADES = new Set(['Junior', 'Middle', 'Senior', 'Lead']);
 const STATUSES = new Set(['completed', 'in_progress', 'dropped', 'no_show', 'declined', 'overdue']);
@@ -36,12 +37,14 @@ function extractHistory(input: unknown): unknown[] {
 export function validateImport(dataset: Dataset, input: unknown): ImportResult {
   const errors: ImportError[] = [];
   const warnings: string[] = [];
-  const add = (row: number, field: string, message: string) => errors.push({ row, field, message });
-  if (!isObject(input)) return { valid: false, errors: [{ row: 0, field: 'input', message: 'Expected {employees, history}' }], warnings, employees: [], history: [], counts: { employees: 0, history: 0 } };
+  const warning_details: ImportIssue[] = [];
+  const warn = (code: ImportCode, params: Record<string,string|number>) => { warning_details.push({code,params}); warnings.push(importMessage(code, 'en',params)); };
+  const add = (row: number, field: string, code: ImportCode) => errors.push({ row, field, code, message_key: `import.${code}`, message: importMessage(code, 'en') });
+  if (!isObject(input)) return { valid: false, errors: [{ row: 0, field: 'input', code: 'input', message_key: 'import.input', message: importMessage('input', 'en') }], warnings, warning_details, employees: [], history: [], counts: { employees: 0, history: 0 } };
   let rawEmployees: unknown[] = [];
   let rawHistory: unknown[] = [];
-  try { rawEmployees = extractEmployees(input.employees); } catch (error) { add(0, 'employees', String(error)); }
-  try { rawHistory = extractHistory(input.history); } catch (error) { add(0, 'history', String(error)); }
+  try { rawEmployees = extractEmployees(input.employees); } catch { add(0, 'employees', 'employees_shape'); }
+  try { rawHistory = extractHistory(input.history); } catch { add(0, 'history', typeof input.history === 'string' ? 'csv' : 'history_shape'); }
   const skillIds = new Set(dataset.skills.map(s => s.skill_id));
   const eventMap = new Map(dataset.events.map(e => [e.event_id, e]));
   const profileKeys = new Set(dataset.role_profiles.map(p => `${p.role}\0${p.grade}`));
@@ -55,31 +58,31 @@ export function validateImport(dataset: Dataset, input: unknown): ImportResult {
   const history: History[] = [];
   rawEmployees.forEach((raw, i) => {
     const row = i + 1;
-    if (!isObject(raw)) { add(row, 'employee', 'Expected object'); return; }
+    if (!isObject(raw)) { add(row, 'employee', 'object'); return; }
     const start = errors.length;
     for (const field of ['employee_id', 'full_name', 'department', 'role', 'grade', 'hire_date', 'work_format', 'preferred_language', 'last_review_date'])
-      if (!str(raw[field]) || String(raw[field]).length > 300) add(row, field, 'Required non-empty string, at most 300 characters');
-    if (typeof raw.employee_id === 'string' && (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(raw.employee_id) || (Object.prototype.hasOwnProperty.call(Object.prototype,raw.employee_id) || raw.employee_id==='prototype'))) add(row, 'employee_id', 'Use a safe identifier of 1–80 letters, numbers, underscores or hyphens');
+      if (!str(raw[field]) || String(raw[field]).length > 300) add(row, field, 'required');
+    if (typeof raw.employee_id === 'string' && (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(raw.employee_id) || (Object.prototype.hasOwnProperty.call(Object.prototype,raw.employee_id) || raw.employee_id==='prototype'))) add(row, 'employee_id', 'employee_id');
     if (typeof raw.employee_id === 'string') {
-      if (employeeIds.has(raw.employee_id)) add(row, 'employee_id', 'Duplicate ID in import');
+      if (employeeIds.has(raw.employee_id)) add(row, 'employee_id', 'duplicate');
       employeeIds.add(raw.employee_id);
     }
-    if (!GRADES.has(String(raw.grade))) add(row, 'grade', 'Unknown grade');
-    if (!profileKeys.has(`${raw.role}\0${raw.grade}`)) add(row, 'role', 'Unknown role/grade profile');
-    if (!WORK_FORMATS.has(String(raw.work_format))) add(row, 'work_format', 'Unknown work format');
-    if (!LANGUAGES.has(String(raw.preferred_language))) add(row, 'preferred_language', 'Unknown language');
-    if (!validDate(String(raw.hire_date))) add(row, 'hire_date', 'Invalid ISO date');
-    if (!validDate(String(raw.last_review_date))) add(row, 'last_review_date', 'Invalid ISO date');
-    if (validDate(String(raw.hire_date)) && validDate(String(raw.last_review_date)) && String(raw.last_review_date) < String(raw.hire_date)) add(row, 'last_review_date', 'Before hire date');
-    if (!Number.isInteger(raw.tenure_months) || (raw.tenure_months as number) < 0) add(row, 'tenure_months', 'Expected non-negative integer');
-    if (!nullable(raw.manager_id) && !str(raw.manager_id)) add(row, 'manager_id', 'Expected ID or null');
-    if (!isObject(raw.skills)) add(row, 'skills', 'Expected skill levels object');
+    if (!GRADES.has(String(raw.grade))) add(row, 'grade', 'grade');
+    if (!profileKeys.has(`${raw.role}\0${raw.grade}`)) add(row, 'role', 'role');
+    if (!WORK_FORMATS.has(String(raw.work_format))) add(row, 'work_format', 'work_format');
+    if (!LANGUAGES.has(String(raw.preferred_language))) add(row, 'preferred_language', 'language');
+    if (!validDate(String(raw.hire_date))) add(row, 'hire_date', 'date');
+    if (!validDate(String(raw.last_review_date))) add(row, 'last_review_date', 'date');
+    if (validDate(String(raw.hire_date)) && validDate(String(raw.last_review_date)) && String(raw.last_review_date) < String(raw.hire_date)) add(row, 'last_review_date', 'before_hire');
+    if (!Number.isInteger(raw.tenure_months) || (raw.tenure_months as number) < 0) add(row, 'tenure_months', 'nonnegative');
+    if (!nullable(raw.manager_id) && !str(raw.manager_id)) add(row, 'manager_id', 'nullable_id');
+    if (!isObject(raw.skills)) add(row, 'skills', 'skills');
     else for (const [id, level] of Object.entries(raw.skills)) {
-      if (!skillIds.has(id)) add(row, `skills.${id}`, 'Unknown skill');
-      if (!Number.isInteger(level) || (level as number) < 0 || (level as number) > 5) add(row, `skills.${id}`, 'Expected integer 0–5');
+      if (!skillIds.has(id)) add(row, `skills.${id}`, 'skill');
+      if (!Number.isInteger(level) || (level as number) < 0 || (level as number) > 5) add(row, `skills.${id}`, 'level');
     }
     if (!nullable(raw.career_goal)) {
-      if (!isObject(raw.career_goal) || !profileKeys.has(`${raw.career_goal.target_role}\0${raw.career_goal.target_grade}`)) add(row, 'career_goal', 'Unknown target role/grade');
+      if (!isObject(raw.career_goal) || !profileKeys.has(`${raw.career_goal.target_role}\0${raw.career_goal.target_grade}`)) add(row, 'career_goal', 'goal');
     }
     if (errors.length > start) return;
     const employee: Employee = { employee_id: String(raw.employee_id), full_name: String(raw.full_name), department: String(raw.department),
@@ -89,60 +92,60 @@ export function validateImport(dataset: Dataset, input: unknown): ImportResult {
       skills: raw.skills as Levels, last_review_date: String(raw.last_review_date) };
     const existing = knownEmployees.get(employee.employee_id);
     if (existing) {
-      if (stable(existing) !== stable(employee)) add(row, 'employee_id', 'Existing ID has conflicting content');
-      else warnings.push(`Employee ${employee.employee_id} already exists; no-op`);
+      if (stable(existing) !== stable(employee)) add(row, 'employee_id', 'conflict');
+      else warn('employee_exists', {id:employee.employee_id});
     } else employees.push(employee);
   });
   const incomingIds = new Set(employees.map(e => e.employee_id));
   employees.forEach((e, i) => {
     if (e.manager_id && !knownEmployees.has(e.manager_id) && !incomingIds.has(e.manager_id))
-      warnings.push(`Employee ${e.employee_id}: manager ${e.manager_id} is unresolved`);
-    if (e.manager_id === e.employee_id) add(i + 1, 'manager_id', 'Cannot manage self');
+      warn('manager_unresolved', {id:e.employee_id,manager:e.manager_id});
+    if (e.manager_id === e.employee_id) add(i + 1, 'manager_id', 'self_manager');
   });
   rawHistory.forEach((raw, i) => {
     const row = i + 1;
-    if (!isObject(raw)) { add(row, 'history', 'Expected object'); return; }
+    if (!isObject(raw)) { add(row, 'history', 'object'); return; }
     const start = errors.length;
-    for (const field of ['record_id', 'employee_id', 'event_id', 'date', 'status', 'assigned_by']) if (!str(raw[field]) || String(raw[field]).length > 300) add(row, field, 'Required non-empty string, at most 300 characters');
-    if (typeof raw.record_id === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/.test(raw.record_id)) add(row, 'record_id', 'Use a safe identifier of 1–100 characters');
+    for (const field of ['record_id', 'employee_id', 'event_id', 'date', 'status', 'assigned_by']) if (!str(raw[field]) || String(raw[field]).length > 300) add(row, field, 'required');
+    if (typeof raw.record_id === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/.test(raw.record_id)) add(row, 'record_id', 'record_id');
     if (typeof raw.record_id === 'string') {
-      if (recordIds.has(raw.record_id)) add(row, 'record_id', 'Duplicate ID in import');
+      if (recordIds.has(raw.record_id)) add(row, 'record_id', 'duplicate');
       recordIds.add(raw.record_id);
     }
-    if (!knownEmployees.has(String(raw.employee_id)) && !incomingIds.has(String(raw.employee_id))) add(row, 'employee_id', 'Unknown employee');
+    if (!knownEmployees.has(String(raw.employee_id)) && !incomingIds.has(String(raw.employee_id))) add(row, 'employee_id', 'employee');
     const event = eventMap.get(String(raw.event_id));
-    if (!event) add(row, 'event_id', 'Unknown event');
-    if (!validDate(String(raw.date))) add(row, 'date', 'Invalid ISO date');
-    if (!nullable(raw.due_date) && !validDate(String(raw.due_date))) add(row, 'due_date', 'Invalid ISO date');
-    if (!STATUSES.has(String(raw.status))) add(row, 'status', 'Unknown status');
-    if (!ASSIGNERS.has(String(raw.assigned_by))) add(row, 'assigned_by', 'Unknown assigner');
+    if (!event) add(row, 'event_id', 'event');
+    if (!validDate(String(raw.date))) add(row, 'date', 'date');
+    if (!nullable(raw.due_date) && !validDate(String(raw.due_date))) add(row, 'due_date', 'date');
+    if (!STATUSES.has(String(raw.status))) add(row, 'status', 'status');
+    if (!ASSIGNERS.has(String(raw.assigned_by))) add(row, 'assigned_by', 'assigner');
     const pct = Number(raw.completion_pct);
-    if (!Number.isInteger(pct) || pct < 0 || pct > 100) add(row, 'completion_pct', 'Expected integer 0–100');
-    if (raw.status === 'completed' && pct !== 100) add(row, 'completion_pct', 'Completed requires 100');
-    if (['in_progress', 'overdue'].includes(String(raw.status)) && pct > 95) add(row, 'completion_pct', 'Unfinished status cannot exceed 95');
-    if (raw.status === 'dropped' && (pct < 5 || pct > 95)) add(row, 'completion_pct', 'Dropped requires 5–95');
-    if (['no_show', 'declined'].includes(String(raw.status)) && pct !== 0) add(row, 'completion_pct', 'Status requires 0');
-    if (raw.status === 'no_show' && event?.format === 'self_paced') add(row, 'status', 'No-show requires a scheduled event');
-    if (!nullable(raw.score) && (!Number.isInteger(Number(raw.score)) || Number(raw.score) < 0 || Number(raw.score) > 100)) add(row, 'score', 'Expected integer 0–100 or blank');
-    if (!nullable(raw.feedback_rating) && (!Number.isInteger(Number(raw.feedback_rating)) || Number(raw.feedback_rating) < 1 || Number(raw.feedback_rating) > 5)) add(row, 'feedback_rating', 'Expected integer 1–5 or blank');
-    if (!nullable(raw.completed_at) && !validDate(String(raw.completed_at))) add(row, 'completed_at', 'Invalid ISO date');
-    if (!nullable(raw.completed_at) && raw.status !== 'completed') add(row, 'completed_at', 'Only completed records have completion date');
+    if (!Number.isInteger(pct) || pct < 0 || pct > 100) add(row, 'completion_pct', 'percent');
+    if (raw.status === 'completed' && pct !== 100) add(row, 'completion_pct', 'completed');
+    if (['in_progress', 'overdue'].includes(String(raw.status)) && pct > 95) add(row, 'completion_pct', 'unfinished');
+    if (raw.status === 'dropped' && (pct < 5 || pct > 95)) add(row, 'completion_pct', 'dropped');
+    if (['no_show', 'declined'].includes(String(raw.status)) && pct !== 0) add(row, 'completion_pct', 'zero');
+    if (raw.status === 'no_show' && event?.format === 'self_paced') add(row, 'status', 'scheduled');
+    if (!nullable(raw.score) && (!Number.isInteger(Number(raw.score)) || Number(raw.score) < 0 || Number(raw.score) > 100)) add(row, 'score', 'score');
+    if (!nullable(raw.feedback_rating) && (!Number.isInteger(Number(raw.feedback_rating)) || Number(raw.feedback_rating) < 1 || Number(raw.feedback_rating) > 5)) add(row, 'feedback_rating', 'rating');
+    if (!nullable(raw.completed_at) && !validDate(String(raw.completed_at))) add(row, 'completed_at', 'date');
+    if (!nullable(raw.completed_at) && raw.status !== 'completed') add(row, 'completed_at', 'completion_date');
     if (!nullable(raw.completed_at) && validDate(String(raw.date)) && validDate(String(raw.completed_at)) && String(raw.completed_at) < String(raw.date))
-      add(row, 'completed_at', 'Completion before enrollment/session');
+      add(row, 'completed_at', 'chronology');
     if (errors.length > start) return;
     const item = normalizeHistory(raw);
     const existing = knownHistory.get(item.record_id);
     if (existing) {
-      if (stable(existing) !== stable(item)) add(row, 'record_id', 'Existing ID has conflicting content');
-      else warnings.push(`History ${item.record_id} already exists; no-op`);
+      if (stable(existing) !== stable(item)) add(row, 'record_id', 'conflict');
+      else warn('history_exists', {id:item.record_id});
     } else {
       if (item.status === 'completed' && !event?.mandatory) {
         const key = completionKey(item);
-        if (knownCompletions.has(key)) add(row, 'event_id', item.event_id === 'EV_036' ? 'Session already completed' : 'Event already completed');
+        if (knownCompletions.has(key)) add(row, 'event_id', item.event_id === 'EV_036' ? 'session_repeat' : 'event_repeat');
         else knownCompletions.add(key);
       }
       if (errors.length === start) history.push(item);
     }
   });
-  return { valid: errors.length === 0, errors, warnings, employees, history, counts: { employees: employees.length, history: history.length } };
+  return { valid: errors.length === 0, errors, warnings, warning_details, employees, history, counts: { employees: employees.length, history: history.length } };
 }
