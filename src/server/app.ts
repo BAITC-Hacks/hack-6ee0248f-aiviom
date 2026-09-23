@@ -28,6 +28,10 @@ import {
   type State,
 } from "./store.js";
 import { AppError, requireThat, text } from "./errors.js";
+import { normalizeLocale } from '../shared/locale.js';
+import { errorMessageKey, serverMessage } from '../shared/server-i18n.js';
+import { catalogText } from '../shared/catalog-i18n.js';
+import { localizeImportResult } from '../shared/import-i18n.js';
 import { canRead, own, reviewer, role, scope } from "./access.js";
 import {
   acceptQuest,
@@ -317,6 +321,7 @@ route("post", "/api/employees/:id/preview", (req, res) => {
   );
 });
 route("post", "/api/employees/:id/recommendations", async (req, res) => {
+  const locale = normalizeLocale(req.headers['accept-language']);
   const { state: s, actor: a, se } = context(res);
   const id = param(req);
   scope(s, a, id);
@@ -327,15 +332,16 @@ route("post", "/api/employees/:id/recommendations", async (req, res) => {
     ? await recommend(p, {
         apiKey: process.env.OPENAI_API_KEY,
         model,
-        locale: "ru",
+        locale,
         workspaceVersion: se.workspace_id + ":" + s.version,
         beforeRequest: () => { reservation = reserveAi(se.workspace_id, model); },
       })
-    : await judgeRecommendation(p, se.workspace_id);
+    : await judgeRecommendation(p, se.workspace_id, locale);
   if (reservation) settleAi(reservation, result);
   return result;
 });
 route("post", "/api/judge/recommend", async (req, res) => {
+  const locale = normalizeLocale(req.headers['accept-language']);
   const { se } = context(res);
   requireThat(
     process.env.OPENAI_API_KEY && process.env.AI_MODE !== "offline",
@@ -388,7 +394,7 @@ route("post", "/api/judge/recommend", async (req, res) => {
   const result = await recommend(p, {
     apiKey: process.env.OPENAI_API_KEY,
     model,
-    locale: "ru",
+    locale,
     workspaceVersion: se.workspace_id,
     timeoutMs: 8000,
     beforeRequest: () => { reservation = reserveAi(se.workspace_id, model); },
@@ -402,13 +408,14 @@ route("post", "/api/external/search", async (req, res) => {
     .object({
       skill_id: z.string(),
       desired_level: z.number().int().min(0).max(5),
-      language: z.enum(["ru", "kk", "en"]),
+      language: z.enum(["ru", "kk", "en"]).optional(),
       format: z.enum(["online", "offline", "self_paced"]).optional(),
     })
     .strict()
     .parse(req.body);
   const skill = s.dataset.skills.find((k) => k.skill_id === input.skill_id);
   requireThat(skill, "Навык не найден");
+  const locale = normalizeLocale(req.headers['accept-language'] ?? input.language);
   let reservation: string | undefined;
   if (process.env.OPENAI_API_KEY && process.env.AI_MODE !== "offline")
     reservation = reserveAi(
@@ -416,7 +423,7 @@ route("post", "/api/external/search", async (req, res) => {
       process.env.OPENAI_MODEL || "gpt-5.4-mini",
     );
   const result = await searchExternalOpportunities(
-    { ...input, skill_name: skill.name },
+    { ...input, language: locale, skill_name: catalogText(locale, 'skill', skill.skill_id, skill.name) },
     { apiKey: process.env.AI_MODE === "offline" ? undefined : process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL },
   );
   if (reservation) settleAi(reservation, { mode: result.mode });
@@ -688,7 +695,7 @@ route("get", "/api/hr/analytics", (_r, res) => {
 route("post", "/api/import/preview", (req, res) => {
   const { state: s, actor: a } = context(res);
   role(a, "hr");
-  return validateImport(s.dataset, req.body);
+  return localizeImportResult(validateImport(s.dataset, req.body), normalizeLocale(req.headers['accept-language']));
 });
 route("post", "/api/import/commit", (req, res) =>
   change(res, (s, a) => {
@@ -730,7 +737,8 @@ route("post", "/api/import/commit", (req, res) =>
         maximum[skill] = Math.max(maximum[skill] ?? 0, level);
     }
     audit(s, a.id, "import.commit", "batch", JSON.stringify(result.counts));
-    return { ok: true, counts: result.counts, warnings: result.warnings };
+    const localized = localizeImportResult(result, normalizeLocale(req.headers['accept-language']));
+    return { ok: true, counts: result.counts, warnings: localized.warnings };
   }),
 );
 route("get", "/api/rewards", (_r, res) => {
@@ -782,17 +790,18 @@ route("get", "/api/audit", (_r, res) => {
   role(a, "hr", "supervisor");
   return { events: s.audit.slice(-200).reverse() };
 });
-app.use("/api", (_req, res) =>
+app.use("/api", (req, res) =>
   res.status(404).json({
     code: "NOT_FOUND",
-    user_message: "API маршрут не найден",
+    user_message: serverMessage(normalizeLocale(req.headers['accept-language']), 'error.not_found'),
+    message_key: 'error.not_found',
     retryable: false,
     request_id: randomUUID(),
   }),
 );
 export function errorHandler(
   err: any,
-  _req: express.Request,
+  req: express.Request,
   res: express.Response,
   _next: express.NextFunction,
 ) {
@@ -806,15 +815,15 @@ export function errorHandler(
       : err.type === "entity.too.large"
         ? 413
         : 500;
+  const locale = normalizeLocale(req.headers['accept-language']);
+  const code = known ? err.code : validation ? 'VALIDATION' : status === 413 ? 'TOO_LARGE' : 'INTERNAL';
+  const message_key = validation ? 'error.validation' : status === 413 ? 'error.too_large' : status === 500 ? 'error.internal' : err.message_key ?? errorMessageKey(code, status, err.message);
+  const params = known && err.params ? err.params : undefined;
   res.status(status).json({
-    code: known ? err.code : validation ? "VALIDATION" : "INTERNAL",
-    user_message: known
-      ? err.message
-      : validation
-        ? "Проверьте обязательные поля и формат данных."
-        : status === 413
-          ? "Файл слишком большой (максимум 2 МБ)."
-          : "Не удалось выполнить запрос. Попробуйте ещё раз.",
+    code,
+    user_message: serverMessage(locale, message_key, params),
+    message_key,
+    ...(params ? { params } : {}),
     retryable: status >= 500,
     request_id: randomUUID(),
   });

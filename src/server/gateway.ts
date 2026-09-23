@@ -1,14 +1,18 @@
 import type { Profile, RecommendationResult } from "../shared/types.js";
 import { recommend } from "../ai/index.js";
+import { normalizeLocale, type Locale } from '../shared/locale.js';
+import { serverMessage } from '../shared/server-i18n.js';
 const defaultUrl = "https://career.aiviom.ai";
 const gatewayCookies = new Map<string, string>();
 export async function judgeRecommendation(
   profile: Profile,
   workspace = "standalone",
+  requestedLocale: Locale = 'ru',
 ): Promise<RecommendationResult> {
+  const locale = normalizeLocale(requestedLocale);
   const configured = process.env.JUDGE_GATEWAY_URL;
   if (configured === "off" || process.env.AI_MODE === "offline")
-    return recommend(profile);
+    return recommend(profile, { locale });
   const base = configured || defaultUrl;
   let gatewayCookie = gatewayCookies.get(workspace) || "";
   const deadline = Date.now() + 9500;
@@ -19,6 +23,7 @@ export async function judgeRecommendation(
       throw new Error("Unsafe gateway");
     if (!gatewayCookie) {
       const session = await fetch(new URL("/api/session", endpoint), {
+        headers: { 'Accept-Language': locale },
         signal: remaining(),
       });
       if (!session.ok) throw new Error("Gateway session unavailable");
@@ -29,7 +34,7 @@ export async function judgeRecommendation(
     }
     const response = await fetch(new URL("/api/judge/recommend", endpoint), {
       method: "POST",
-      headers: { "Content-Type": "application/json", cookie: gatewayCookie },
+      headers: { "Content-Type": "application/json", 'Accept-Language': locale, cookie: gatewayCookie },
       body: JSON.stringify({
         employee: {
           ...profile.employee,
@@ -46,6 +51,7 @@ export async function judgeRecommendation(
     if (rotated) gatewayCookies.set(workspace, rotated);
     if (!response.ok) throw new Error("Gateway unavailable");
     const result = (await response.json()) as RecommendationResult;
+    if (result.locale !== locale && !(locale === 'ru' && result.locale == null)) throw new Error('Gateway locale mismatch');
     const eligible = new Set(
       profile.candidates
         .filter((c) => c.eligible && !c.event.mandatory)
@@ -58,11 +64,11 @@ export async function judgeRecommendation(
       throw new Error("Gateway facts mismatch");
     return result;
   } catch {
-    const result = await recommend(profile);
+    const result = await recommend(profile, { locale });
     return {
       ...result,
       warnings: [
-        "Командный AI gateway недоступен; показан расчётный режим.",
+        serverMessage(locale, 'warning.gateway'),
         ...result.warnings,
       ],
     };
