@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Candidate, Event, Profile } from '../src/shared/types.js';
-import { buildRecommendationFacts, createRecommender, type RecommendationFacts, type RecommendationProvider } from '../src/ai/index.js';
+import { buildRecommendationFacts, buildRecommendationSchema, createRecommender, type RecommendationFacts, type RecommendationProvider } from '../src/ai/index.js';
 import { createExternalSearch, publicSourceUrl } from '../src/ai/external.js';
 import { judgeRecommendation } from '../src/server/gateway.js';
 
@@ -165,6 +165,23 @@ test('participation priority rejects a negative history balance and recent statu
   const result = await recommender(p, { apiKey: 'test', catalogEvents: [past] });
   assert.equal(result.mode, 'rules_fallback');
   assert.deepEqual(result.warning_codes, ['AI_INVALID_OUTPUT']);
+});
+
+test('strict schema scopes priority, evidence and alternatives to each eligible candidate', () => {
+  const p = profile();
+  p.candidates[0].K = 0;
+  p.candidates[0].B = 2;
+  const facts = buildRecommendationFacts(p);
+  const schema = buildRecommendationSchema(facts);
+  const branches = schema.properties.recommendations.items.anyOf;
+  assert.equal(branches.length, 2);
+  assert.deepEqual(branches[0].properties.event_id.enum, ['top']);
+  assert.deepEqual(branches[0].properties.priority_code.enum, ['target_gap', 'prerequisite_unlock']);
+  assert.deepEqual(branches[0].properties.evidence_ids.items.enum, facts.candidates[0].required_evidence_ids);
+  assert.deepEqual(branches[0].properties.alternative_event_id.enum, ['other']);
+  assert.deepEqual(branches[1].properties.event_id.enum, ['other']);
+  assert.deepEqual(branches[1].properties.priority_code.enum, ['critical_target', 'target_gap']);
+  assert.deepEqual(branches[1].properties.alternative_event_id.enum, ['top']);
 });
 
 test('alternative comparison uses actual gains, hours and related-history counts in every locale', async () => {
