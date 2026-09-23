@@ -1258,6 +1258,9 @@ const extraRu = {
   "demo.explanation":
     "Дата меняет только расчёт в демо. Исходная история сохраняется.",
   "demo.resetQuestion": "Сбросить изменения в демо-пространстве?",
+  "path.actualSkills": "Фактическое изменение навыков",
+  "path.unassessedSkills":
+    "— означает, что навык ещё не оценён; это не нулевой уровень.",
   "path.allSkills": "Все навыки",
   "path.currentLevel": "Сейчас",
   "path.required": "Цель",
@@ -1283,7 +1286,7 @@ const extraRu = {
   "path.goalLabel": "Цель",
   "path.coverageExplain": "Доля требований к навыкам, выполненных сейчас.",
   "path.criticalExplain": "Важные навыки для целевой роли.",
-  "path.planExplain": "Доля выполненных шагов личного плана.",
+  "path.planExplain": "Доля сокращения исходного разрыва навыков текущей цели.",
   "path.mandatoryExplain": "Навыки учитываются после подтверждения результата.",
   "path.needHelp": "Нужна помощь",
   "path.submitResult": "Отправить результат",
@@ -1531,6 +1534,9 @@ const extraKk: ExtraDictionary = {
   "demo.explanation":
     "Күн тек демодағы есепке әсер етеді. Бастапқы тарих сақталады.",
   "demo.resetQuestion": "Демо кеңістіктегі өзгерістерді қалпына келтіресіз бе?",
+  "path.actualSkills": "Дағдылардың нақты өзгерісі",
+  "path.unassessedSkills":
+    "— дағды әлі бағаланбағанын білдіреді; бұл нөлдік деңгей емес.",
   "path.allSkills": "Барлық дағдылар",
   "path.currentLevel": "Қазір",
   "path.required": "Мақсат",
@@ -1556,7 +1562,8 @@ const extraKk: ExtraDictionary = {
   "path.goalLabel": "Мақсат",
   "path.coverageExplain": "Қазір орындалған дағды талаптарының үлесі.",
   "path.criticalExplain": "Мақсатты рөл үшін маңызды дағдылар.",
-  "path.planExplain": "Жеке жоспардағы орындалған қадамдар үлесі.",
+  "path.planExplain":
+    "Қазіргі мақсатқа қатысты бастапқы дағды алшақтығының қысқару үлесі.",
   "path.mandatoryExplain": "Дағдылар нәтиже расталған соң есепке алынады.",
   "path.needHelp": "Көмек қажет",
   "path.submitResult": "Нәтижені жіберу",
@@ -1803,6 +1810,9 @@ const extraEn: ExtraDictionary = {
   "demo.explanation":
     "The date changes demo calculations only. Source history is preserved.",
   "demo.resetQuestion": "Reset changes in this demo workspace?",
+  "path.actualSkills": "Actual skill change",
+  "path.unassessedSkills":
+    "— means the skill has not been assessed; it is not a zero level.",
   "path.allSkills": "All skills",
   "path.currentLevel": "Current",
   "path.required": "Target",
@@ -1828,7 +1838,8 @@ const extraEn: ExtraDictionary = {
   "path.goalLabel": "Goal",
   "path.coverageExplain": "Share of skill requirements met now.",
   "path.criticalExplain": "Essential skills for the target role.",
-  "path.planExplain": "Share of personal plan steps completed.",
+  "path.planExplain":
+    "Share of the initial skill gap closed for the current goal.",
   "path.mandatoryExplain":
     "Skills receive credit after the result is confirmed.",
   "path.needHelp": "Need help",

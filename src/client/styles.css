@@ -972,6 +972,22 @@ summary:hover {
 .skill-matrix {
   width: 100%;
 }
+.skill-matrix-note {
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 0 8px;
+}
+.skill-matrix-scroll {
+  max-height: 420px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.skill-matrix-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
 .skill-matrix-head,
 .skill-matrix-row {
   display: grid;

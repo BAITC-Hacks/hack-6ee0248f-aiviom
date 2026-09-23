@@ -105,17 +105,27 @@ export function People({
       item.role === profileLoad.data?.goal?.target_role &&
       item.grade === profileLoad.data?.goal?.target_grade,
   );
+  const skillPriority = (skillId: string) => {
+    const current = profileLoad.data?.skills[skillId];
+    const required = targetProfile?.required_skills[skillId];
+    if (current != null && required != null && current < required)
+      return targetProfile?.critical_skills.includes(skillId) ? 0 : 1;
+    if (required != null) return 2;
+    return current != null ? 3 : 4;
+  };
   const allSkillIds = [
     ...new Set([
       ...(catalogLoad.data?.skills.map((skill) => skill.skill_id) ?? []),
       ...Object.keys(profileLoad.data?.skills ?? {}),
       ...Object.keys(targetProfile?.required_skills ?? {}),
     ]),
-  ].sort((left, right) =>
-    catalogText(left, "title", left).localeCompare(
-      catalogText(right, "title", right),
-      locale,
-    ),
+  ].sort(
+    (left, right) =>
+      skillPriority(left) - skillPriority(right) ||
+      catalogText(left, "title", left).localeCompare(
+        catalogText(right, "title", right),
+        locale,
+      ),
   );
   async function assign(event: React.FormEvent) {
     event.preventDefault();
@@ -177,7 +187,7 @@ export function People({
           </p>
           <div className="confirmed-result-grid">
             <div>
-              <strong>{t("path.skillPreview")}</strong>
+              <strong>{t("path.actualSkills")}</strong>
               {lastConfirmation.skills.map((skill) => (
                 <p key={skill.skill_id}>
                   {catalogText(skill.skill_id, "title", skill.skill_id)}:{" "}
@@ -445,61 +455,76 @@ export function People({
                     </strong>
                   </div>
                   <h4>{t("path.allSkills")}</h4>
+                  <p className="muted skill-matrix-note">
+                    {t("path.unassessedSkills")}
+                  </p>
                   <div
-                    className="skill-matrix"
-                    role="table"
+                    className="skill-matrix-scroll"
+                    tabIndex={0}
+                    role="region"
                     aria-label={t("path.allSkills")}
                   >
-                    <div className="skill-matrix-head" role="row">
-                      <span role="columnheader">{t("common.skill")}</span>
-                      <span role="columnheader">{t("path.currentLevel")}</span>
-                      <span role="columnheader">{t("path.required")}</span>
+                    <div
+                      className="skill-matrix"
+                      role="table"
+                      aria-label={t("path.allSkills")}
+                    >
+                      <div className="skill-matrix-head" role="row">
+                        <span role="columnheader">{t("common.skill")}</span>
+                        <span role="columnheader">
+                          {t("path.currentLevel")}
+                        </span>
+                        <span role="columnheader">{t("path.required")}</span>
+                      </div>
+                      {allSkillIds.map((skillId) => {
+                        const current = profileLoad.data?.skills[skillId];
+                        const required =
+                          targetProfile?.required_skills[skillId];
+                        return (
+                          <div
+                            className="skill-matrix-row"
+                            role="row"
+                            key={skillId}
+                          >
+                            <span role="cell">
+                              {catalogText(
+                                skillId,
+                                "title",
+                                catalogLoad.data?.skills.find(
+                                  (skill) => skill.skill_id === skillId,
+                                )?.name ?? skillId,
+                              )}{" "}
+                              {targetProfile?.critical_skills.includes(
+                                skillId,
+                              ) && (
+                                <span className="inline-critical">
+                                  {t("path.criticalTag")}
+                                </span>
+                              )}
+                            </span>
+                            <strong role="cell">
+                              {current == null ? "—" : num(current)}
+                            </strong>
+                            <span role="cell">
+                              {required == null ? (
+                                "—"
+                              ) : (
+                                <>
+                                  {num(required)}
+                                  {current != null && required > current && (
+                                    <small>
+                                      {t("path.gapAmount", {
+                                        count: num(required - current),
+                                      })}
+                                    </small>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {allSkillIds.map((skillId) => {
-                      const current = profileLoad.data?.skills[skillId] ?? 0;
-                      const required = targetProfile?.required_skills[skillId];
-                      return (
-                        <div
-                          className="skill-matrix-row"
-                          role="row"
-                          key={skillId}
-                        >
-                          <span role="cell">
-                            {catalogText(
-                              skillId,
-                              "title",
-                              catalogLoad.data?.skills.find(
-                                (skill) => skill.skill_id === skillId,
-                              )?.name ?? skillId,
-                            )}{" "}
-                            {targetProfile?.critical_skills.includes(
-                              skillId,
-                            ) && (
-                              <span className="inline-critical">
-                                {t("path.criticalTag")}
-                              </span>
-                            )}
-                          </span>
-                          <strong role="cell">{num(current)}</strong>
-                          <span role="cell">
-                            {required == null ? (
-                              "—"
-                            ) : (
-                              <>
-                                {num(required)}
-                                {required > current && (
-                                  <small>
-                                    {t("path.gapAmount", {
-                                      count: num(required - current),
-                                    })}
-                                  </small>
-                                )}
-                              </>
-                            )}
-                          </span>
-                        </div>
-                      );
-                    })}
                   </div>
                   <h4>{t("path.roadmap")}</h4>
                   <Status
