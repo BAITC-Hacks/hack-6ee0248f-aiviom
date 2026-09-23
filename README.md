@@ -6,7 +6,7 @@ HackAlem AI, **Case 1 Halyk Bank**. AI-навигатор развития: пр
 
 ## Запуск из чистого clone
 
-Нужны Git, интернет для установки зависимостей и **Node.js 22 LTS** (локально также проверяется Node20.20). SQLite встроен; отдельный сервер БД не нужен. На платформах без готового binary `better-sqlite3` могут понадобиться Python3, make и C++ compiler.
+Нужны Git, интернет для установки зависимостей и **Node.js 20.19+ или 22 LTS**. SQLite встроен; отдельный сервер БД не нужен. На платформах без готового binary `better-sqlite3` могут понадобиться Python3, make и C++ compiler.
 
 ```bash
 git clone https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom.git
@@ -16,7 +16,7 @@ npm run build
 npm start
 ```
 
-Открыть **http://127.0.0.1:3000**. Первый API-запрос автоматически создаёт schema, seed и отдельное demo workspace. Ctrl+C останавливает сервер, повторный `npm start` сохраняет данные. Кнопка «Сбросить демо» сбрасывает только текущее workspace. Не удаляйте SQLite-файл для обычного сброса.
+Открыть **http://127.0.0.1:3000**. Для проверки API без ручного изучения UI есть [точный сценарий с запросами](docs/DEMO_API.md). Первый API-запрос автоматически создаёт schema, seed и отдельное demo workspace. Ctrl+C останавливает сервер, повторный `npm start` сохраняет данные. Кнопка «Сбросить демо» сбрасывает только текущее workspace. Не удаляйте SQLite-файл для обычного сброса.
 
 Репозиторий private по правилам организатора: нужен выданный организатором доступ GitHub. Никакой персональный OpenAI аккаунт для локальной проверки не требуется, когда доступен командный judge gateway. **На текущем промежуточном commit gateway ещё не развёрнут: без ключа работает явно обозначенный расчётный режим. Финальный статус появится здесь после проверки.**
 
@@ -56,7 +56,7 @@ Gateway принимает только профиль/историю одног
 
 ## Импорт жюри
 
-HR принимает JSON wrapper `{ "employees": [...] }`, массив или одиночный полный профиль схемы исходного архива; история — CSV с исходным заголовком либо массив записей. Смотрите [исходный README](data/source/README.ru.md). Готовый валидный пример: [data/demo/import-example.json](data/demo/import-example.json). Это отдельно помеченный regression/demo профиль, не скрытые данные жюри. Вставьте в поле JSON содержимое `employees` из этого файла (wrapper тоже допустим); `history` можно оставить пустым.
+HR принимает JSON wrapper `{ "employees": [...] }`, массив или одиночный полный профиль схемы исходного архива; история — CSV с исходным заголовком либо массив записей через API. Смотрите [исходный README](data/source/README.ru.md). Готовый валидный пример: [data/demo/import-example.json](data/demo/import-example.json). Это отдельно помеченный regression/demo профиль, не скрытые данные жюри. Загрузите файл JSON через поле импорта; CSV истории можно не выбирать.
 
 Возьмите полный профиль из `data/source/employees.json`, измените employee_id/full_name и при необходимости навыки/цель. История должна ссылаться на новые ID. Неизвестный manager допускается с предупреждением; неизвестные skill/event, некорректные диапазоны, даты и конфликтующие IDs отклоняются. Повтор идентичного импорта — no-op. Original файлы не меняются.
 
@@ -71,7 +71,7 @@ npm run build
 npm audit
 ```
 
-`npm test` не вызывает платный API. `npx tsx scripts/live-smoke.ts` — отдельный платный smoke только при заданном серверном ключе. Проверки покрывают review cutoff/proxy, caps, EV_036, prerequisites, preview, import, RBAC, изоляцию, идемпотентность и AI output. Карта/статус: [ACCEPTANCE](docs/ACCEPTANCE.md).
+`npm test` и `npm run verify:source` не вызывают платный API. `npx tsx scripts/live-smoke.ts` — отдельный платный smoke только при заданном серверном ключе. Проверки покрывают review cutoff/proxy, caps, EV_036, prerequisites, preview, import, RBAC, изоляцию, идемпотентность и AI output. Карта/статус: [ACCEPTANCE](docs/ACCEPTANCE.md).
 
 ## Политики и ограничения
 

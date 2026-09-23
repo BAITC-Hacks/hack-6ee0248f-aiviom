@@ -11,7 +11,9 @@
     "start": "tsx src/server/index.ts",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "verify:source": "node scripts/verify-source.mjs",
+    "smoke:judge": "tsx scripts/judge-smoke.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.7.0",
