@@ -285,10 +285,19 @@ a {
 }
 .panel-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   margin-bottom: 20px;
+}
+.panel-head > h2 {
+  flex: 1 1 170px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.panel-head > :not(h2) {
+  max-width: 100%;
 }
 .panel h2,
 .detail-drawer h2,
@@ -1250,10 +1259,9 @@ legend {
 }
 .external-form {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(
-      160px,
-      1.2fr
-    ) 110px 130px auto;
+  grid-template-columns:
+    minmax(130px, 1fr) minmax(160px, 1.2fr)
+    110px 130px auto;
   align-items: end;
   gap: 12px;
   margin-top: 16px;
@@ -1625,6 +1633,16 @@ legend {
   }
 }
 @media (max-width: 390px) {
+  .topbar {
+    gap: 8px;
+  }
+  .topbar-right {
+    gap: 4px;
+  }
+  .topbar-brand {
+    font-size: 0;
+    gap: 0;
+  }
   .profile-identity {
     align-items: start;
   }
@@ -1661,9 +1679,6 @@ legend {
   }
   .mobile-nav button {
     font-size: 10px;
-  }
-  .topbar-brand {
-    font-size: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
