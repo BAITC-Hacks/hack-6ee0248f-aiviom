@@ -163,6 +163,10 @@ export interface Roadmap {
   milestones: Milestone[];
   steps: {
     event_id: string;
+    title?: string;
+    hours?: number;
+    skill_changes?: { skill_id: string; name: string; before: number; after: number; required: number | null; gap_before: number | null; gap_after: number | null }[];
+    unlocks_event_ids?: string[];
     session: string | null;
     status: string;
     reason: string;
