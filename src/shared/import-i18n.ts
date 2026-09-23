@@ -123,7 +123,7 @@ export const importMessages = {
   },
   "status": {
     "ru": "Укажите поддерживаемый статус истории.",
-    "kk": "Тарихтың қолдау көрсетілетін күйін көрсетіңіз.",
+    "kk": "Қатысу тарихы үшін жарамды күйді көрсетіңіз.",
     "en": "Unknown status"
   },
   "assigner": {
@@ -208,7 +208,7 @@ export const importMessages = {
   },
   "manager_unresolved": {
     "ru": "Сотрудник {id}: руководитель {manager} пока не найден.",
-    "kk": "{id} қызметкері: {manager} басшысы әзірге табылмады.",
+    "kk": "Қызметкер {id}: басшысы ({manager}) әзірге табылмады.",
     "en": "Employee {id}: manager {manager} is unresolved"
   }
 } as const;

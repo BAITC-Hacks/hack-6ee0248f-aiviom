@@ -30,7 +30,7 @@ POST /api/side-quests/:id/evidence {evidence} -> Quest
 POST /api/side-quests/:id/accept {reason} -> Quest
 POST /api/help {employee_id,reason,event_id?:string} -> {ok:true}; GET /api/help -> {requests:object[]}; POST /api/help/:id/resolve {reason}.
 POST /api/assignments {employee_id,event_id,due_date} -> {ok:true}; manager/HR only.
-GET /api/hr/analytics -> domain analytics (UI generic table until exact shape confirmed).
+GET /api/hr/analytics -> domain analytics; explicit localized UI columns, canonical machine keys unchanged. `caveat_codes` supplements legacy `caveats`.
 POST /api/import/preview {employees,history} -> domain validation response
 POST /api/import/commit {employees,history} -> {ok:true,counts,warnings}
 GET /api/rewards -> {balance,earned,items:{id,title,cost,description}[],ledger:object[]}
@@ -43,3 +43,13 @@ Domain: src/domain/** tests/domain*.test.ts docs/FORMULAS.md.
 UI: src/client/** DESIGN.md .impeccable/** docs/UI*.md. index.html request coordinator changes.
 AI: src/ai/** tests/ai*.test.ts docs/AI.md.
 Coordinator: other files, dependency changes, DB, server, main, integration.
+
+## Atlas release localization (backward-compatible)
+
+`Locale = 'ru' | 'kk' | 'en'`. HTTP clients send `Accept-Language`; supported regional tags and quality weights are normalized, default is `ru`. All request language is presentation-only. Domain date and calculations never depend on language.
+
+Recommendations and judge gateway propagate language, including offline/failure paths. The strict judge JSON input stays compatible: language travels in the header. Existing `reason`, factor keys and evidence IDs remain; optional `summary` and structured `facts[{id,factor,label,value}]` allow concise presentation without parsing prose. Response `locale` identifies its language. AI cache includes facts, workspace version, model, locale and prompt version. Changing UI language does not authorize an automatic paid request.
+
+Errors retain `{code,user_message,retryable,request_id}` and may add `message_key` and safe `params`. Import row issues add `code` and `message_key`; warning details add controlled codes/parameters. Domain returns canonical codes and compatibility text; the server localizes presentation. UI shows translated field labels, never raw object dumps.
+
+Catalog translations are separate from immutable source JSON and keyed by stable IDs. Recognized source fields are translated only while matching the source snapshot; unknown imported/edited content remains original. UI language persists locally; draft input is never translated or discarded on language change.
