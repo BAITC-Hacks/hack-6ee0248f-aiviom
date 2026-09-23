@@ -60,6 +60,7 @@ export const endpoint = {
   quests: () => api<{ quests: Quest[] }>('/api/side-quests'),
   createQuest: (body: unknown) => api<Quest>('/api/side-quests', 'POST', body),
   reviewQuest: (id: string, body: unknown) => api<Quest>(`/api/side-quests/${encodeURIComponent(id)}/review`, 'POST', body),
+  resubmitQuest: (id: string, body: {title:string;description:string;deliverables:string}) => api<Quest>(`/api/side-quests/${encodeURIComponent(id)}/resubmit`, 'POST', body),
   resourceQuest: (id: string, body: unknown) => api<Quest>(`/api/side-quests/${encodeURIComponent(id)}/resource`, 'POST', body),
   policyQuest: (id: string, body: unknown) => api<Quest>(`/api/side-quests/${encodeURIComponent(id)}/policy`, 'POST', body),
   evidenceQuest: (id: string, evidence: string) => api<Quest>(`/api/side-quests/${encodeURIComponent(id)}/evidence`, 'POST', { evidence }),
