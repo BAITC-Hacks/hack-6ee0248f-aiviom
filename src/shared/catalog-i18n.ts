@@ -5,7 +5,7 @@ import { kkEvents, kkSkills } from './catalog-translations/kk.js';
 import { departments, demo, enumLabels, rewards, roles, type DemoField } from './catalog-translations/labels.js';
 
 export type CatalogKind = 'event' | 'skill' | 'role' | 'department' | 'reward' | 'demo';
-export type CatalogField = 'title' | 'description' | 'deliverables' | 'criteria' | 'reason';
+export type CatalogField = 'title' | 'description' | 'deliverables' | 'criteria' | 'reason' | 'evidence';
 export type EnumKind = 'grade' | 'format' | 'eventType' | 'status' | 'skillType' | 'skillCategory' | 'proficiency';
 
 /**

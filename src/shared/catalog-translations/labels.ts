@@ -44,10 +44,20 @@ export const rewards: Record<string, { source: readonly [string, string]; text: 
   },
 };
 
-export type DemoField = 'title' | 'description' | 'deliverables' | 'criteria' | 'reason';
+export type DemoField = 'title' | 'description' | 'deliverables' | 'criteria' | 'reason' | 'evidence';
 export const demo: Record<string, Partial<Record<DemoField, { source: string; text: Label }>>> = {
   DEMO_Q_REVIEW: { title: { source: 'Практический разбор: предложение', text: { ru: 'Практический разбор: предложение', kk: 'Тәжірибелік талдау: ұсыныс', en: 'Practical review: proposal' } } },
-  DEMO_Q_EVIDENCE: { title: { source: 'Практический разбор: результат', text: { ru: 'Практический разбор: результат', kk: 'Тәжірибелік талдау: нәтиже', en: 'Practical review: result' } } },
+  DEMO_Q_EVIDENCE: {
+    title: { source: 'Практический разбор: результат', text: { ru: 'Практический разбор: результат', kk: 'Тәжірибелік талдау: нәтиже', en: 'Practical review: result' } },
+    evidence: {
+      source: 'Демо-доказательство: подготовлен разбор решения и проверочный пример. Это синтетическая заявка для проверки workflow.',
+      text: {
+        ru: 'Демо-доказательство: подготовлен разбор решения и проверочный пример. Это синтетическая заявка для проверки workflow.',
+        kk: 'Демо-дәлел: шешім талдауы мен тексеруге болатын мысал дайындалды. Бұл жұмыс үдерісін тексеруге арналған жасанды өтінім.',
+        en: 'Demo evidence: a solution review and a test example have been prepared. This is a synthetic request for workflow verification.',
+      },
+    },
+  },
   DEMO_Q_RESOURCE: { title: { source: 'Время на практику с наставником', text: { ru: 'Время на практику с наставником', kk: 'Тәлімгермен тәжірибеге уақыт', en: 'Time to practice with a mentor' } } },
   DEMO_Q_POLICY: { title: { source: 'Новый способ подтверждения компетенции', text: { ru: 'Новый способ подтверждения компетенции', kk: 'Құзыреттілікті растаудың жаңа тәсілі', en: 'A new way to verify a competency' } } },
   DEMO_HELP: { reason: { source: 'Нужно согласовать 4 часа на развитие на этой неделе.', text: { ru: 'Нужно согласовать 4 часа на развитие на этой неделе.', kk: 'Осы аптада дамуға 4 сағат бөлуді келісу қажет.', en: 'Four hours for development need approval this week.' } } },
