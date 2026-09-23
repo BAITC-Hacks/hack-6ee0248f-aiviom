@@ -1,24 +1,47 @@
 # Product
+
 <!-- impeccable:product-schema 1 -->
+
 ## Platform
+
 web
+
 ## Stack
+
 delegated by explicit user request: TypeScript React/Vite + Express + SQLite modular monolith.
+
 ## Users
+
 Employees plan development; advisors verify evidence; managers resolve resources; HR analyzes gaps and imports; supervisors approve policy exceptions.
+
 ## Product Purpose
+
 Connect profile, goal, explainable AI choices, verified completion, competency roadmap and HR insight.
+
 ## Positioning
+
 Fact-based alternatives, non-mutating impact preview, verified alternative paths and explicit organizational blockers.
+
 ## Operating Context
+
 HackAlem Case 1, private official repository. Synthetic source snapshot 2026-10-01. Independent judge clone and hosted AI access required; hosting pending.
+
 ## Capabilities and Constraints
+
 Five isolated demo roles, immutable source dataset, server RBAC, transactional credits. Skills do not guarantee promotion. No public leaderboard. RU primary, dictionary fallback for kk/en.
+
 ## Brand Commitments
-Corporate minimalism, light surfaces, graphite text, restrained green. No visual RPG.
+
+Professional working atlas, warm light surfaces, ink text, ultramarine actions, evidence-led progress. The original CQ mark is an open continuous line. No decorative RPG imagery.
+
 ## Evidence on Hand
+
 Full approved specification and original data/source JSON/CSV. No claims of production impact.
+
 ## Product Principles
+
 Facts before suggestions; confirmed work before credit; mandatory HR separate from voluntary growth; honest unknowns.
+
 ## Accessibility & Inclusion
+
 Responsive web, labeled forms, keyboard focus, readable tables, errors and loading states.

@@ -1,38 +1,115 @@
 {
-  "schemaVersion": 1,
-  "name": "Career Quest working atlas",
-  "mode": "operate",
-  "colors": {
-    "ink": "#20252D",
-    "muted": "#59616D",
-    "page": "#F6F5F1",
-    "surface": "#FFFFFF",
-    "sidebar": "#FFFFFF",
-    "secondarySurface": "#EFEEE8",
-    "border": "#DADCE0",
-    "primary": "#2846C7",
-    "primarySurface": "#E8ECFC",
-    "success": "#176742",
-    "successSurface": "#E7F4EC",
-    "warning": "#865B13",
-    "warningSurface": "#FFF1D8",
-    "error": "#A83439",
-    "errorSurface": "#FCE9E8"
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-23T11:04:00Z",
+  "title": "Design System: Career Quest",
+  "extensions": {
+    "shadows": [
+      {
+        "name": "dialog",
+        "value": "0 24px 64px rgba(19, 31, 67, 0.22)",
+        "purpose": "Raised modal over a dimmed backdrop."
+      },
+      {
+        "name": "mobile-navigation",
+        "value": "0 -8px 24px rgba(28, 36, 56, 0.08)",
+        "purpose": "Separates fixed navigation from scrolling content."
+      }
+    ],
+    "motion": [
+      {
+        "name": "hover-state",
+        "value": "0.16s ease",
+        "purpose": "Background, border, color, and transform on hover-capable devices; removed with reduced motion."
+      }
+    ],
+    "breakpoints": [
+      { "name": "desktop-sidebar", "value": "1024px" },
+      { "name": "single-column", "value": "767px" },
+      { "name": "narrow-header", "value": "390px" }
+    ]
   },
-  "typography": {
-    "family": "Noto Sans, Arial, sans-serif",
-    "bodySize": 16,
-    "tableSize": 14,
-    "captionFloor": 12,
-    "numerals": "tabular-nums"
-  },
-  "radii": { "control": 8, "panel": 12 },
-  "spacing": [4, 8, 12, 16, 24, 32, 48, 64],
-  "layout": {
-    "sidebarWidth": 240,
-    "contentMaxWidth": 1440,
-    "tabletMenuBreakpoint": 1024,
-    "phoneBreakpoint": 768,
-    "phoneNavPrimaryCount": 3
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action with 44px minimum target.",
+      "html": "<button class=\"ds-button-primary\">Continue</button>",
+      "css": ".ds-button-primary{min-height:44px;padding:10px 16px;border:1px solid transparent;border-radius:8px;background:#2846C7;color:#fff;font:650 14px/1.2 'Noto Sans',Arial,sans-serif;cursor:pointer}.ds-button-primary:hover{background:#203BAF}.ds-button-primary:focus-visible{outline:3px solid #2846C7;outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Quiet secondary action with a visible border.",
+      "html": "<button class=\"ds-button-secondary\">Details</button>",
+      "css": ".ds-button-secondary{min-height:44px;padding:10px 16px;border:1px solid #858B94;border-radius:8px;background:#fff;color:#233BA0;font:650 14px/1.2 'Noto Sans',Arial,sans-serif;cursor:pointer}.ds-button-secondary:hover{filter:brightness(.96)}.ds-button-secondary:focus-visible{outline:3px solid #2846C7;outline-offset:3px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "description": "Plain working input with a contrast-safe control border.",
+      "html": "<input class=\"ds-field\" aria-label=\"Search\" placeholder=\"Search\" />",
+      "css": ".ds-field{min-height:44px;width:100%;padding:10px 12px;border:1px solid #858B94;border-radius:8px;background:#fff;color:#20252D;font:400 16px 'Noto Sans',Arial,sans-serif}.ds-field:focus-visible{border-color:#2846C7;outline:3px solid #2846C7;outline-offset:3px}"
+    },
+    {
+      "name": "Working Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Flat bordered surface for decisions and data.",
+      "html": "<section class=\"ds-panel\"><h2>Required work</h2><p>One next step is visible here.</p></section>",
+      "css": ".ds-panel{padding:24px;border:1px solid #DADCE0;border-radius:12px;background:#fff;color:#20252D;font:400 16px/1.55 'Noto Sans',Arial,sans-serif}.ds-panel h2{margin:0;font-size:22px;line-height:1.25}.ds-panel p{margin:12px 0 0}"
+    },
+    {
+      "name": "Selected Navigation",
+      "kind": "nav",
+      "description": "Selected destination with text and ultramarine tint.",
+      "html": "<button class=\"ds-nav-active\" aria-current=\"page\">My path</button>",
+      "css": ".ds-nav-active{display:flex;align-items:center;min-height:44px;width:100%;padding:10px 12px;border:0;border-radius:8px;background:#E8ECFC;color:#2846C7;text-align:left;font:600 14px/1.3 'Noto Sans',Arial,sans-serif}.ds-nav-active:hover{background:#EFEEE8}.ds-nav-active:focus-visible{outline:3px solid #2846C7;outline-offset:3px}"
+    },
+    {
+      "name": "Status Tag",
+      "kind": "chip",
+      "description": "Short semantic state with readable text.",
+      "html": "<span class=\"ds-tag\">Confirmed</span>",
+      "css": ".ds-tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:#E7F4EC;color:#176742;font:650 12px/1.2 'Noto Sans',Arial,sans-serif}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Working Atlas",
+    "overview": "The interface is an operational atlas of a person's development: current position, required assignments, one next action, and evidence of what has been confirmed. Its light working surfaces remain consistent across the five roles. Rights and available actions remain server controlled.",
+    "keyCharacteristics": [
+      "A warm canvas and flat white working surfaces.",
+      "Ultramarine for actions, selected navigation, focus, and preview outlines.",
+      "Status color always accompanied by readable text.",
+      "No decorative image where tasks and data carry the content."
+    ],
+    "rules": [
+      {
+        "name": "The Status-in-Words Rule",
+        "body": "Status color must accompany a readable state label; color alone never conveys approval, warning, or error.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data-First Type Rule",
+        "body": "Headings separate working sections; support copy explains a number rather than competing with it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Working Surface Rule",
+        "body": "Routine panels stay flat; elevation identifies overlays and fixed navigation only.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the next valid action near its facts and status.",
+      "Do label preview and confirmed states explicitly.",
+      "Do keep analytical tables locally scrollable on narrow screens."
+    ],
+    "donts": [
+      "Don't replace working data with decorative illustrations.",
+      "Don't use semantic color without text.",
+      "Don't style ordinary panels as elevated overlays."
+    ]
   }
 }

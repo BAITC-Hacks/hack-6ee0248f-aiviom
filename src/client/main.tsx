@@ -9,7 +9,6 @@ import { createRoot } from "react-dom/client";
 import {
   Activity,
   BookOpen,
-  ChevronDown,
   Compass,
   Gift,
   LayoutDashboard,
@@ -25,6 +24,7 @@ import {
 import type { Session } from "./api";
 import { endpoint, setApiLocale } from "./api";
 import { I18nProvider, useI18n } from "./i18n";
+import { LanguagePicker } from "./LanguagePicker";
 import {
   Dialog,
   Notice,
@@ -81,7 +81,7 @@ function demoIdentityName(identity: Session["identity"]): string {
 }
 
 function App() {
-  const { locale, setLocale, t } = useI18n();
+  const { locale, t } = useI18n();
   useLayoutEffect(() => {
     setApiLocale(locale);
   }, [locale]);
@@ -259,20 +259,7 @@ function App() {
               )}
               <Tag>{t(`role.${session.identity.role}`)}</Tag>
             </div>
-            <label className="locale-picker">
-              <span className="sr-only">{t("common.language")}</span>
-              <select
-                value={locale}
-                onChange={(event) =>
-                  setLocale(event.target.value as typeof locale)
-                }
-              >
-                <option value="ru">Русский</option>
-                <option value="kk">Қазақша</option>
-                <option value="en">English</option>
-              </select>
-              <ChevronDown size={16} aria-hidden="true" />
-            </label>
+            <LanguagePicker />
             <button
               className="icon-button demo-toggle"
               aria-label={t("demo.title")}
@@ -356,15 +343,17 @@ function App() {
               key={item}
               className={tab === item ? "active" : ""}
               aria-current={tab === item ? "page" : undefined}
+              aria-label={t(`nav.${item}`)}
               onClick={() => navigate(item)}
             >
               <Icon size={21} aria-hidden="true" />
-              <span>{t(`nav.${item}`)}</span>
+              <span>{t(`nav.short.${item}`)}</span>
             </button>
           );
         })}
         <button
           className={primary.includes(tab) ? "" : "active"}
+          aria-label={t("nav.allSections")}
           onClick={() => setMenuOpen(true)}
         >
           <MoreHorizontal size={21} aria-hidden="true" />

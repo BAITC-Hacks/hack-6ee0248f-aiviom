@@ -9,6 +9,7 @@ export type Action = <T>(
 ) => Promise<T | null>;
 
 export function useLoad<T>(load: () => Promise<T>, deps: React.DependencyList) {
+  const { locale } = useI18n();
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
@@ -17,6 +18,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: React.DependencyList) {
     let active = true;
     setBusy(true);
     setError("");
+    setData(null);
     load()
       .then((value) => {
         if (active) setData(value);
@@ -31,7 +33,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: React.DependencyList) {
     return () => {
       active = false;
     };
-  }, [...deps, tick]);
+  }, [...deps, tick, locale]);
   return { data, error, busy, refresh: () => setTick((value) => value + 1) };
 }
 

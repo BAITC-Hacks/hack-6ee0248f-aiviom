@@ -32,7 +32,7 @@ export function AuditView({
   session: Session;
   revision: number;
 }) {
-  const { locale, t, catalogText } = useI18n();
+  const { locale, t, catalogText, enumText } = useI18n();
   const load = useLoad(endpoint.audit, [revision, session.identity.id]);
   const catalogLoad = useLoad(endpoint.catalog, []);
   const rows = load.data?.events ?? [];
@@ -83,10 +83,16 @@ export function AuditView({
                 const actor = asText(
                   row.actor_name ?? row.actor ?? row.actor_id,
                 );
-                return (
-                  session.identities.find((item) => item.id === actor)?.label ??
-                  actor
+                const identity = session.identities.find(
+                  (item) => item.id === actor,
                 );
+                if (!identity) return actor;
+                if (identity.role !== "employee")
+                  return enumText("role", identity.role);
+                const name = identity.label.includes(" · ")
+                  ? identity.label.split(" · ").slice(1).join(" · ")
+                  : identity.label;
+                return name || enumText("role", "employee");
               },
             },
             {
