@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
 import type { ConfirmedResult, Session } from "../api";
 import { endpoint } from "../api";
@@ -53,6 +53,7 @@ export function People({
   const [historyStatus, setHistoryStatus] = useState("all");
   const [lastConfirmation, setLastConfirmation] =
     useState<ConfirmedResult | null>(null);
+  const appliedInspection = useRef<string | null>(null);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(30);
   const [eventId, setEventId] = useState("");
@@ -65,10 +66,19 @@ export function People({
   const [busy, setBusy] = useState(false);
   const employees = employeesLoad.data?.employees ?? [];
   useEffect(() => {
-    if (!inspectionEmployeeId) return;
+    if (
+      !inspectionEmployeeId ||
+      appliedInspection.current === inspectionEmployeeId
+    )
+      return;
     setSelected(inspectionEmployeeId);
-    const inspected = employees.find((item) => item.employee_id === inspectionEmployeeId);
-    if (inspected) setSearch(inspected.full_name);
+    const inspected = employees.find(
+      (item) => item.employee_id === inspectionEmployeeId,
+    );
+    if (inspected) {
+      setSearch(inspected.full_name);
+      appliedInspection.current = inspectionEmployeeId;
+    }
   }, [inspectionEmployeeId, employeesLoad.data]);
   const active =
     employees.find((item) => item.employee_id === selected) ?? employees[0];
@@ -589,9 +599,14 @@ export function People({
                     {!profileLoad.data.history.length && (
                       <p className="muted">{t("path.noHistory")}</p>
                     )}
-                    {!!profileLoad.data.history.length && !profileLoad.data.history.some((record) => historyStatus === "all" || record.status === historyStatus) && (
-                      <p className="muted">{t("path.noFilteredHistory")}</p>
-                    )}
+                    {!!profileLoad.data.history.length &&
+                      !profileLoad.data.history.some(
+                        (record) =>
+                          historyStatus === "all" ||
+                          record.status === historyStatus,
+                      ) && (
+                        <p className="muted">{t("path.noFilteredHistory")}</p>
+                      )}
                   </div>
                   {session.identity.role === "hr" && (
                     <button
