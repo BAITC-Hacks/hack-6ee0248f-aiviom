@@ -156,12 +156,15 @@ export interface Roadmap {
 export interface Recommendation {
   event_id: string;
   reason: string;
+  summary?: string;
+  facts?: { id: string; factor: string; label: string; value: string }[];
   factor_keys: string[];
   evidence_ids: string[];
   alternative_event_id: string | null;
   alternative_reason: string;
 }
 export interface RecommendationResult {
+  locale?: import('./locale.js').Locale;
   mode: "live_ai" | "cached_live_ai" | "rules_fallback" | "unavailable";
   recommendations: Recommendation[];
   warnings: string[];
