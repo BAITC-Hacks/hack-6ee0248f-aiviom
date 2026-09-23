@@ -34,6 +34,8 @@ test('model can choose a real lower-priority activity, with validated facts', as
   assert.equal(result.mode, 'live_ai');
   assert.deepEqual(result.recommendations.map(r => r.event_id), ['other']);
   assert.equal(result.recommendations[0].factor_keys.length, 4);
+  assert.match(result.recommendations[0].summary!, /The skill gap is critical/);
+  assert.match(result.recommendations[0].alternative_reason, /selected sequence is useful/);
   assert.match(result.recommendations[0].reason, /Грейд: Начальный/);
   assert.match(result.recommendations[0].reason, /Цель: Analyst \/ Средний/);
   assert.match(result.recommendations[0].reason, /Analysis 1→3 \(2\)/);
@@ -96,7 +98,7 @@ test('invalid IDs, missing factor evidence, and prompt injection fail closed', a
   }
 });
 
-test('four factor groups are mandatory and failure warnings use safe codes', async () => {
+test('four factor groups are mandatory and failure warnings hide diagnostics', async () => {
   const invalid = createRecommender({ async choose(facts) {
     const output = modelChoice(facts);
     output.recommendations[0].factor_keys = ['grade', 'skill_gap', 'history'];
@@ -104,10 +106,14 @@ test('four factor groups are mandatory and failure warnings use safe codes', asy
   } });
   const result = await invalid(profile(), { apiKey: 'test' });
   assert.equal(result.mode, 'rules_fallback');
-  assert.match(result.warnings[0], /^AI_INVALID_OUTPUT:/);
+  assert.match(result.warnings[0], /Ответ AI не прошёл проверку/);
+  assert.equal(result.warnings[0].includes('AI_INVALID_OUTPUT'), false);
+  assert.deepEqual(result.warning_codes, ['AI_INVALID_OUTPUT']);
   const timeout = createRecommender({ async choose() { const error = new Error('private details must not escape'); error.name = 'APIConnectionTimeoutError'; throw error; } });
   const timed = await timeout(profile(), { apiKey: 'test' });
-  assert.match(timed.warnings[0], /^AI_TIMEOUT:/);
+  assert.match(timed.warnings[0], /AI не ответил вовремя/);
+  assert.equal(timed.warnings[0].includes('AI_TIMEOUT'), false);
+  assert.deepEqual(timed.warning_codes, ['AI_TIMEOUT']);
   assert.equal(timed.warnings[0].includes('private details'), false);
 });
 
@@ -193,7 +199,10 @@ test('RU, KK and EN get separate verified presentations and AI cache entries', a
   let calls = 0;
   const rec = createRecommender({ async choose(facts) {
     calls++;
-    return { output: modelChoice(facts) };
+    const output = modelChoice(facts);
+    output.recommendations[0].reason = ({ ru: 'Этот шаг закрывает важный разрыв и готовит к цели.', kk: 'Бұл қадам маңызды алшақтықты азайтып, мақсатқа дайындайды.', en: 'This step closes a critical gap and prepares for the target.' } as const)[facts.locale as 'ru'|'kk'|'en'];
+    output.recommendations[0].alternative_reason = ({ ru: 'Альтернатива сильнее по численному приоритету.', kk: 'Баламаның сандық басымдығы жоғары.', en: 'The alternative has a higher numeric priority.' } as const)[facts.locale as 'ru'|'kk'|'en'];
+    return { output };
   } });
   for (const locale of ['ru', 'kk', 'en'] as const) {
     const result = await rec(profile(), { apiKey: 'test', locale });
@@ -203,12 +212,13 @@ test('RU, KK and EN get separate verified presentations and AI cache entries', a
     assert.equal(choice.facts?.length, 4);
     assert.equal(choice.facts?.every(fact => Boolean(fact.id && fact.factor && fact.label && fact.value)), true);
     assert.ok(choice.summary);
-    assert.equal(choice.reason.includes('The skill gap is critical'), false, 'unverified model prose is not displayed');
+    assert.equal(choice.reason.includes(choice.summary!), true);
+    assert.ok(choice.alternative_reason);
     if (locale === 'kk') {
-      assert.match(choice.summary!, /дағдысын/);
+      assert.match(choice.summary!, /маңызды алшақтықты/);
       assert.match(choice.facts![0].label, /Деңгей/);
     }
-    if (locale === 'en') assert.match(choice.summary!, /This step adds/);
+    if (locale === 'en') assert.match(choice.summary!, /critical gap/);
     assert.equal((await rec(profile(), { apiKey: 'test', locale })).mode, 'cached_live_ai');
   }
   assert.equal(calls, 3);

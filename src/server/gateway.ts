@@ -71,6 +71,7 @@ export async function judgeRecommendation(
         serverMessage(locale, 'warning.gateway'),
         ...result.warnings,
       ],
+      warning_codes: ['GATEWAY_UNAVAILABLE', ...(result.warning_codes ?? [])],
     };
   }
 }
