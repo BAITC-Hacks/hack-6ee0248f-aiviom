@@ -3,6 +3,8 @@ export class AppError extends Error {
     public status: number,
     public code: string,
     message: string,
+    public message_key?: string,
+    public params?: Record<string, string | number>,
   ) {
     super(message);
   }
@@ -16,9 +18,7 @@ export function requireThat(
   if (!condition) throw new AppError(status, code, message);
 }
 export function text(value: unknown, label: string, max = 4000) {
-  requireThat(
-    typeof value === "string" && value.trim().length > 0 && value.length <= max,
-    `${label}: укажите текст до ${max} символов`,
-  );
+  if (typeof value !== 'string' || !value.trim() || value.length > max)
+    throw new AppError(400, 'VALIDATION', `${label}: укажите текст до ${max} символов`, 'error.text', { max });
   return value.trim();
 }

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type { Candidate, Event, Profile } from '../src/shared/types.js';
 import { buildRecommendationFacts, createRecommender, type RecommendationFacts, type RecommendationProvider } from '../src/ai/index.js';
 import { createExternalSearch, publicSourceUrl } from '../src/ai/external.js';
+import { judgeRecommendation } from '../src/server/gateway.js';
 
 function event(id: string): Event {
   return { event_id: id, title: id, description: '', type: 'course', format: 'online', duration_hours: 3, mandatory: false, target_roles: ['Analyst'], target_grades: ['Junior'], develops_skills: [{ skill_id: 's1', gain: 1, max_level: 5 }], prerequisites: {}, upcoming_sessions: [] };
@@ -33,9 +34,9 @@ test('model can choose a real lower-priority activity, with validated facts', as
   assert.equal(result.mode, 'live_ai');
   assert.deepEqual(result.recommendations.map(r => r.event_id), ['other']);
   assert.equal(result.recommendations[0].factor_keys.length, 4);
-  assert.match(result.recommendations[0].reason, /Грейд: Junior/);
-  assert.match(result.recommendations[0].reason, /Цель: Analyst \/ Middle/);
-  assert.match(result.recommendations[0].reason, /Analysis 1→3 \(2 ур\.\)/);
+  assert.match(result.recommendations[0].reason, /Грейд: Начальный/);
+  assert.match(result.recommendations[0].reason, /Цель: Analyst \/ Средний/);
+  assert.match(result.recommendations[0].reason, /Analysis 1→3 \(2\)/);
   assert.match(result.recommendations[0].reason, /История: истории добровольных активностей нет/);
   assert.deepEqual(result.warnings, []);
   assert.equal(result.usage?.input_tokens, 100);
@@ -186,4 +187,73 @@ test('budget reservation only runs for real uncached provider calls', async () =
   assert.equal((await rec(profile(),options)).mode,'live_ai');
   assert.equal((await rec(profile(),options)).mode,'cached_live_ai');
   assert.equal(reservations,1);
+});
+
+test('RU, KK and EN get separate verified presentations and AI cache entries', async () => {
+  let calls = 0;
+  const rec = createRecommender({ async choose(facts) {
+    calls++;
+    return { output: modelChoice(facts) };
+  } });
+  for (const locale of ['ru', 'kk', 'en'] as const) {
+    const result = await rec(profile(), { apiKey: 'test', locale });
+    assert.equal(result.mode, 'live_ai');
+    assert.equal(result.locale, locale);
+    const choice = result.recommendations[0];
+    assert.equal(choice.facts?.length, 4);
+    assert.equal(choice.facts?.every(fact => Boolean(fact.id && fact.factor && fact.label && fact.value)), true);
+    assert.ok(choice.summary);
+    assert.equal(choice.reason.includes('The skill gap is critical'), false, 'unverified model prose is not displayed');
+    if (locale === 'kk') {
+      assert.match(choice.summary!, /дағдысын/);
+      assert.match(choice.facts![0].label, /Деңгей/);
+    }
+    if (locale === 'en') assert.match(choice.summary!, /This step adds/);
+    assert.equal((await rec(profile(), { apiKey: 'test', locale })).mode, 'cached_live_ai');
+  }
+  assert.equal(calls, 3);
+});
+
+test('offline and failed provider responses remain localized in all locales', async () => {
+  const unavailable = createRecommender({ async choose() { throw new Error('sensitive provider details'); } });
+  for (const locale of ['ru', 'kk', 'en'] as const) {
+    const offline = await createRecommender()(profile(), { locale });
+    assert.equal(offline.locale, locale);
+    assert.equal(offline.mode, 'rules_fallback');
+    assert.ok(offline.recommendations[0].summary);
+    const failed = await unavailable(profile(), { apiKey: 'test', locale });
+    assert.equal(failed.mode, 'rules_fallback');
+    assert.equal(failed.warnings[0].includes('sensitive provider details'), false);
+    if (locale === 'kk') assert.match(failed.warnings[0], /қолжетімсіз/);
+    if (locale === 'en') assert.match(failed.warnings[0], /unavailable/);
+  }
+});
+
+test('judge gateway forwards locale without changing its strict request body', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.JUDGE_GATEWAY_URL;
+  const originalMode = process.env.AI_MODE;
+  process.env.JUDGE_GATEWAY_URL = 'https://gateway.example.test';
+  delete process.env.AI_MODE;
+  const captured: { language: string | null; body?: Record<string, unknown> }[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    const headers = new Headers(init?.headers);
+    const entry: { language: string | null; body?: Record<string, unknown> } = { language: headers.get('Accept-Language') };
+    if (init?.body) entry.body = JSON.parse(String(init.body));
+    captured.push(entry);
+    if (url.endsWith('/api/session')) return new Response('{}', { status: 200, headers: { 'set-cookie': 'cq_session=mock; Path=/' } });
+    return Response.json({ locale: 'kk', recommendations: [{ event_id: 'top' }], warnings: [], mode: 'live_ai' });
+  };
+  try {
+    const result = await judgeRecommendation(profile(), 'locale-gateway-test', 'kk');
+    assert.equal(result.locale, 'kk');
+    assert.deepEqual(captured.map(item => item.language), ['kk', 'kk']);
+    assert.equal(captured[1].body?.locale, undefined);
+    assert.equal(captured[1].body?.as_of, '2026-10-01');
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.JUDGE_GATEWAY_URL; else process.env.JUDGE_GATEWAY_URL = originalUrl;
+    if (originalMode === undefined) delete process.env.AI_MODE; else process.env.AI_MODE = originalMode;
+  }
 });
