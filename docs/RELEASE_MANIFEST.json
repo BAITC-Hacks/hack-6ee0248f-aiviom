@@ -1,73 +1,64 @@
 {
-  "document_type": "verified_release_evidence",
+  "document_type": "atlas_release_candidate_evidence",
   "project": "Career Quest",
   "team": "AIVIOM",
   "repository": "https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom",
-  "branch": "main",
-  "tested_application_commit": "c2c84d76b05e2b917c1f461aaa7ea39c7fd3381a",
-  "runtime": {
-    "local": "Node20.20 macOS",
-    "server": "Node22 Debian container on Ubuntu22 x86_64",
-    "database": "SQLite",
-    "stack": [
-      "TypeScript",
-      "React19",
-      "Vite6",
-      "Express4",
-      "OpenAI SDK6"
-    ]
-  },
-  "commands": {
-    "install": "npm ci",
-    "build": "npm run build",
-    "start": "npm start",
-    "test": "npm test",
-    "source": "npm run verify:source",
-    "judge": "npm run smoke:judge"
+  "branch": "release/atlas-rebrand",
+  "tested_application_commit": "6293c601fa73d20bcd663d8b02ba8bff6b56381c",
+  "submission": {
+    "tag": "submission-2026-09-23",
+    "sha": "1c397c1f0c10652707e34d9d0f3d4776eda0e97b",
+    "organizer_form": "captain submits; not submitted by agent"
   },
   "verification": {
-    "unit_integration": "39/39 PASS",
-    "clean_clone": "PASS isolated no key and no .env",
-    "restart_persistence": "PASS skills XP imports and session persisted",
+    "unit_integration": "57/57 PASS exact application commit",
+    "typecheck": "PASS",
+    "build": "PASS",
     "source_integrity": "7 immutable files PASS",
+    "clean_clone": {
+      "sha": "6293c601fa73d20bcd663d8b02ba8bff6b56381c",
+      "checks": "57/57, typecheck, build, source PASS",
+      "prior_functional": "isolated five-role import/completion/restart PASS without personal key"
+    },
+    "browser": "57 accessible role/locale/page combinations desktop and mobile; targeted workflows and selector keyboard checks",
+    "live_ai": {
+      "model": "gpt-5.4-mini",
+      "mode": "live_ai",
+      "prompt_version": "2.2",
+      "new_profile": true,
+      "ru_ms": 2637,
+      "kk_ms": 2645,
+      "en_ms": 2743,
+      "four_factors_validated": true,
+      "latency_scope": "one request each, not p95"
+    },
+    "clean_client_candidate_gateway_ms": {
+      "ru": 3575,
+      "kk": 3354,
+      "en": 2835
+    },
+    "gateway_scope": "local candidate gateway, no client key; production Atlas pending",
     "dependency_audit": "0 vulnerabilities",
-    "secret_pattern_scan": "PASS",
-    "server_live_ai": {
-      "mode": "live_ai",
-      "model": "gpt-5.4-mini",
-      "e2e_ms": 6388,
-      "input_tokens": 2399,
-      "output_tokens": 264
-    },
-    "hosted_gateway": {
-      "status": "PASS",
-      "clean_environment": true,
-      "mode": "live_ai",
-      "model": "gpt-5.4-mini",
-      "e2e_ms": 6244,
-      "input_tokens": 1753,
-      "output_tokens": 319
-    },
-    "https_health": "PASS",
-    "hosted_ui": "PASS built-in Codex browser, live recommendation visible, no console errors"
+    "secret_pattern_scan": "No high-confidence tracked matches; no private spec, DB or log tracked",
+    "reduced_motion": "PASS built-in browser emulation; transitions suppressed; reset",
+    "design_confirmation": "PASS fresh independent reviewer, final material fixes confirmed; no new material findings"
   },
   "deployment": {
+    "status": "PENDING_POST_HACKATHON",
+    "not_before_utc": "2026-09-23T13:00:00Z",
     "domain": "https://career.aiviom.ai",
     "ip": "34.165.120.4",
     "compose_project": "career-quest",
     "port": "127.0.0.1:3500",
-    "image_digest": "sha256:f7bf8a1a2d958c84eb887cb9f541437052b08905b1c2448ce47151fcf5c7ef21",
-    "status": "LIVE"
-  },
-  "submission": {
-    "github": "pushed",
-    "organizer_form": "captain submits; not submitted by agent"
+    "previous_image": "career-quest:1c397c1f0c10652707e34d9d0f3d4776eda0e97b",
+    "scope": "Career Quest web only; preserve volume and previous image; no Caddy changes"
   },
   "limitations": [
-    "Demo role switching, no corporate SSO",
-    "RU primary; partial kk/en",
-    "Fixed demo catalog/advisor/reward policies",
-    "Bounded roadmap search, no proof of optimality",
-    "Live AI depends on network and finite budget; promotional credits valid30days per captain"
+    "No physical phone, Safari or screen reader verification",
+    "Kazakh reviewed by agent, not certified by native speaker",
+    "Actual 200% browser zoom not verified",
+    "Production Atlas HTTPS and old-client live gateway smoke pending activation",
+    "New external web search not re-run in this release; provider tests cover locale and source validation",
+    "Demo role switching, no corporate SSO; finite API budget and network dependence"
   ]
 }

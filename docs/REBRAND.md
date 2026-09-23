@@ -20,17 +20,19 @@ Isolated writers: frontend/components; source-catalog translations; server/AI lo
 
 ## Acceptance record
 
-Release cannot be called complete until the following have evidence:
-- Source integrity, typecheck, test suite and production build.
-- UI dictionaries, catalog and import messages in RU/KK/EN; Kazakh glyph and wording review.
-- All five roles and accessible screens on desktop/mobile, three languages.
-- Pilot widths 320, 360, 390, 768, 1024, 1440; keyboard/focus, zoom, reduced motion and no page overflow.
-- Import replacement invalidates preview, malformed/oversized files and repeated commit.
-- Actual recommendation in each language, preview/completion/credit and HR update, full practical-project workflow.
-- Independent clean clone without personal credentials and compatible hosted judge gateway.
-- Scoped production deployment, previous image/data backup, HTTPS/health and post-deploy smoke.
+The application candidate passes 57 unit/integration tests, typecheck, production build and verification of all seven immutable source files. UI dictionaries and interpolation parameters, stable-ID catalog translations, localized API errors and locale-separated AI caches are covered by tests. Source data and business formula calculations are unchanged.
 
-Implementation is in progress. Browser review and release results will be recorded after integration; no checks below are implied by this plan.
+Built-in Codex Browser covered 57 role/language/page combinations at 1440 px and the same 57 at 390 px. Independent review checked the three pilot surfaces and narrower layouts; evidence and limitations are in ACCEPTANCE.md. Keyboard checks include language Home/Enter/Escape, list search and Arrow/Enter selection, Tab/Shift+Tab exit, visible focus and dialog focus return. All selectors now share one styled component on desktop and mobile, including language, skills, formats, goals, assignments and demo identity. Long lists include search. Short mobile navigation labels retain full accessible names.
+
+Verified browser actions include preview, plan addition, synthetic evidence acceptance and changed skill/balance, valid import, invalid JSON and invalidation of preview on replacement. Server tests cover resource/program approval, revision and idempotency, oversized bodies and repeated import. These tests do not imply every action was manually repeated in every role/language combination.
+
+A clean clone with no private environment or key passed install/build/source and offline five-role/import/completion/restart scenarios. Its real AI requests through the local candidate gateway returned RU 3575 ms, KK 3354 ms and EN 2835 ms. Final direct new-profile prompt v2.2 requests returned RU 2637 ms, KK 2645 ms and EN 2743 ms, all live with four checked factors and validated alternatives. These are single calls, not p95; the gateway evidence is local, not yet production Atlas.
+
+The seven additional skills informed the same acceptance pass: typography (local Noto Sans and 12 px minimum secondary text), layout (shared spacing and breakpoint grids), colors (7.52:1 primary/white and 3.43:1 control border/white), UI (consistent controls and restrained motion), accessibility (44 px targets and keyboard focus), writing (localized plain labels and actionable errors), and interface (combined review of the three pilots). The shipped dedicated reviewer/documenter agent types were unavailable: a fresh independent reviewer used live built-in-browser screenshots; the UI agent updated the canonical design documents. This is a disclosed degraded review, not a claim of an unavailable workflow.
+
+Final bounded independent review: **PASS** on application `6293c60`. The tablet detail uses full width, mobile text is readable, control borders exceed 3:1, and the 320px demo-role popup keeps its last option reachable with scrolling and End/Enter. Browser console warnings/errors were empty. A final clean-clone repeat on this exact application SHA passed all 57 tests, typecheck, build and source verification.
+
+Production activation is pending the separate post-hackathon rollout. The submission tag remains unchanged; production HTTPS and backward-compatible gateway smoke will be repeated at activation. See DEPLOY.md.
 
 ## Font provenance
 
@@ -38,4 +40,4 @@ Noto Sans variable downloaded from google/fonts `ofl/notosans/NotoSans[wdth,wght
 
 ## Known verification boundaries
 
-Agent review of Kazakh is not native-speaker certification. Browser viewport checks do not claim physical iPhone/Safari or assistive-technology testing. Report these boundaries explicitly unless separately verified.
+Agent review of Kazakh is not native-speaker certification. Browser viewport checks do not claim physical iPhone/Safari or assistive-technology testing. Actual 200% browser zoom was not verified. Reduced-motion emulation was checked in the built-in browser: control transitions became effectively instantaneous and the emulation was reset. No new live external-search request was made for this release; provider tests cover locale and source validation.
