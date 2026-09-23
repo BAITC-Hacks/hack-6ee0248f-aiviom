@@ -1617,14 +1617,14 @@ legend {
     padding: 0 8px;
   }
   .progress-metric > span {
-    font-size: 11px;
+    font-size: 12px;
     min-height: 45px;
   }
   .progress-metric strong {
     font-size: 18px;
   }
   .progress-metric small {
-    font-size: 11px;
+    font-size: 12px;
   }
   .side-stack {
     display: flex;
