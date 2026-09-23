@@ -115,6 +115,9 @@ export function validateImport(dataset: Dataset, input: unknown): ImportResult {
     const pct = Number(raw.completion_pct);
     if (!Number.isInteger(pct) || pct < 0 || pct > 100) add(row, 'completion_pct', 'Expected integer 0–100');
     if (raw.status === 'completed' && pct !== 100) add(row, 'completion_pct', 'Completed requires 100');
+    if (['in_progress', 'overdue'].includes(String(raw.status)) && pct > 95) add(row, 'completion_pct', 'Unfinished status cannot exceed 95');
+    if (raw.status === 'dropped' && (pct < 5 || pct > 95)) add(row, 'completion_pct', 'Dropped requires 5–95');
+    if (['no_show', 'declined'].includes(String(raw.status)) && pct !== 0) add(row, 'completion_pct', 'Status requires 0');
     if (raw.status === 'no_show' && event?.format === 'self_paced') add(row, 'status', 'No-show requires a scheduled event');
     if (!nullable(raw.score) && (!Number.isInteger(Number(raw.score)) || Number(raw.score) < 0 || Number(raw.score) > 100)) add(row, 'score', 'Expected integer 0–100 or blank');
     if (!nullable(raw.feedback_rating) && (!Number.isInteger(Number(raw.feedback_rating)) || Number(raw.feedback_rating) < 1 || Number(raw.feedback_rating) > 5)) add(row, 'feedback_rating', 'Expected integer 1–5 or blank');

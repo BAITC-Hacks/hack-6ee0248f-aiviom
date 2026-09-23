@@ -7,7 +7,8 @@ const pct = (n: number, d: number): number | null => d ? 100 * n / d : null;
 export function buildAnalytics(dataset: Dataset, profiles: Profile[], asOf: string) {
   if (!validDate(asOf)) throw new Error(`Invalid asOf: ${asOf}`);
   const ids = new Set(profiles.map(p => p.employee.employee_id));
-  const histories = dataset.history.filter(h => ids.has(h.employee_id) && h.date <= asOf);
+  const histories = dataset.history.filter(h => ids.has(h.employee_id) && h.date <= asOf &&
+    (h.status !== 'completed' || effectiveCompletedAt(h).date <= asOf));
   const eventMap = new Map(dataset.events.map(e => [e.event_id, e]));
   const skillMap = new Map(dataset.skills.map(s => [s.skill_id, s.name]));
   const requiredIds = new Set(profiles.flatMap(p => p.gaps.map(g => g.skill_id)));

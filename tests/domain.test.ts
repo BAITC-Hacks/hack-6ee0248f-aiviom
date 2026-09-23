@@ -53,6 +53,18 @@ test('only completed after review contributes, sorted by effective completion da
   assert.equal(d.employees[0].skills.A, 1);
 });
 
+test('future exact completion does not affect as-of skills, repeat rule or analytics', () => {
+  const d = fixture();
+  d.history.push(history('R1', 'PREP', '2026-09-20', 'completed', '2026-10-04'));
+  const before = buildProfile(d, 'E1', { asOf: '2026-10-01' });
+  assert.equal(before.skills.A, 1);
+  assert.equal(before.candidates.find(c => c.event.event_id === 'PREP')?.eligible, true);
+  assert.equal(buildAnalytics(d, [before], before.as_of).completions.total, 0);
+  const after = buildProfile(d, 'E1', { asOf: '2026-10-05' });
+  assert.equal(after.skills.A, 2);
+  assert.equal(after.candidates.find(c => c.event.event_id === 'PREP')?.eligible, false);
+});
+
 test('preview is pure, unlocks prerequisite, and roadmap sequences preparation first', () => {
   const d = fixture();
   const p = buildProfile(d, 'E1');
@@ -78,6 +90,16 @@ test('EV_036 offers a different session, never repeats a completed session', () 
   assert.equal(club?.eligible, true);
 });
 
+test('roadmap may use EV_036 twice only on distinct available sessions', () => {
+  const d = fixture();
+  d.role_profiles[1].required_skills = { A: 1, B: 2 };
+  d.events = [event('EV_036', [{ skill_id: 'B', gain: 1, max_level: 5 }], {}, ['2026-10-02', '2026-10-10'])];
+  const p = buildProfile(d, 'E1');
+  const road = buildRoadmap(d, p, 2);
+  assert.deepEqual(road.steps.map(s => s.session), ['2026-10-02', '2026-10-10']);
+  assert.equal(road.remaining_gaps.length, 0);
+});
+
 test('import accepts unknown profile with source wrapper and reports unresolved manager', () => {
   const d = fixture();
   const incoming = { ...structuredClone(employee), employee_id: 'E2', manager_id: 'UNRESOLVED' };
@@ -101,6 +123,8 @@ test('import rejects bad skill, event and conflicting existing ID', () => {
   assert.ok(r.errors.some(e => e.field === 'employee_id'));
   const conflict = validateImport(d, { employees: [{ ...employee, full_name: 'Different' }] });
   assert.ok(conflict.errors.some(e => e.field === 'employee_id'));
+  const invalidStatusPct = validateImport(d, { history: [{ ...history('R2', 'PREP', '2026-09-22', 'no_show'), completion_pct: 50 }] });
+  assert.ok(invalidStatusPct.errors.some(e => e.field === 'completion_pct'));
 });
 
 test('analytics denominators and exact on-time exclude proxy completions', () => {

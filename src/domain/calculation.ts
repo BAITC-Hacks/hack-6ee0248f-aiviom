@@ -165,7 +165,8 @@ export function buildProfile(dataset: Dataset, employeeId: string, options: { as
   const { goal, source, target } = findTarget(dataset, employee, options.goal);
   const { skills, provenance } = skillsAt(dataset, employee, as_of, options.credits ?? []);
   const gapMetrics = gapsFor(dataset, skills, target);
-  const history = dataset.history.filter(h => h.employee_id === employeeId && h.date <= as_of);
+  const history = dataset.history.filter(h => h.employee_id === employeeId && h.date <= as_of &&
+    (h.status !== 'completed' || effectiveCompletedAt(h).date <= as_of));
   const candidates = buildCandidates(dataset, employee, skills, history, gapMetrics.gaps, as_of);
   const mandatory = history.filter(h => dataset.events.some(e => e.event_id === h.event_id && e.mandatory) && h.status !== 'completed');
   const useful = candidates.filter(c => c.eligible && (c.U > 0 || c.B > 0 || c.continuing));
