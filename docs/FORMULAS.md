@@ -40,7 +40,8 @@ Employee input accepts a single profile, array or `{employees:[...]}` wrapper. H
 | `mandatory_overdue` | `count` | Mandatory non-completed records with due date before `as_of` |
 | `no_next_step` | `total`, `by_reason` | Profiles with defined goal and gap but no useful eligible step |
 | `no_voluntary_completion_90d` | `count` | Hired at least 90 days ago, with no completed voluntary activity in the window |
-| `catalog_gaps[]` | `skill_id`, `name`, `employees` | Open skills without currently eligible direct coverage |
+| `catalog_gaps[]` | `skill_id`, `name`, `with_gap`, `with_next_step`, `without_next_step`, `by_reason`, `affected_employees[]`; `employees` aliases `without_next_step` | Employee-skill pairs with open gap |
+| `participation_breakdown` | `mandatory`, `voluntary`: `total`, `completed`, `completion_pct`, `no_show`, `declined`, `overdue`, `by_status` | History records in each assignment category |
 | `event_groups[]` | `event_id`, `title`, `employees` | Unique profiles for whom event is eligible and useful |
 | `on_time` | `eligible`, `on_time`, `rate_pct` | Completed records with **exact** `completed_at` and `due_date` |
 | `no_next_employees[]` | `employee_id`, `full_name`, `reason` | Scoped profiles with a concrete next-step blocker |
