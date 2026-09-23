@@ -1,0 +1,2 @@
+record_id,employee_id,event_id,date,due_date,status,completion_pct,score,feedback_rating,assigned_by
+DOC_RECORD_001,DOC_EMPLOYEE_001,EV_005,2026-09-20,,completed,100,85,4,self
