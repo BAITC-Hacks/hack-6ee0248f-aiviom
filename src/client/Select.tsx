@@ -129,6 +129,22 @@ export function Select<T extends string = string>({
       trigger.current?.focus();
     } else if (event.key === "Tab") {
       setOpen(false);
+      const scope = trigger.current?.closest("dialog") ?? document;
+      const controls = Array.from(
+        scope.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(
+        (element) =>
+          element.getClientRects().length > 0 &&
+          (!root.current?.contains(element) || element === trigger.current),
+      );
+      const current = trigger.current ? controls.indexOf(trigger.current) : -1;
+      const next = controls[current + (event.shiftKey ? -1 : 1)];
+      if (next) {
+        event.preventDefault();
+        next.focus();
+      }
     } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       if (event.target === search.current)
@@ -162,6 +178,7 @@ export function Select<T extends string = string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={id}
+        aria-describedby={`${id}-value`}
         aria-required={required || undefined}
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : start())}
@@ -172,7 +189,9 @@ export function Select<T extends string = string>({
           }
         }}
       >
-        <span>{selected?.label ?? placeholder ?? t("common.select")}</span>
+        <span id={`${id}-value`}>
+          {selected?.label ?? placeholder ?? t("common.select")}
+        </span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>
       {open && (
