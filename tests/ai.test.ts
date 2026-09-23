@@ -239,6 +239,28 @@ test('offline and failed provider responses remain localized in all locales', as
   }
 });
 
+test('verified history and unlock counts use locale-aware forms', async () => {
+  for (const [count, historyWord, activityWord] of [
+    [1, '1 запись', '1 активность'],
+    [2, '2 записи', '2 активности'],
+    [5, '5 записей', '5 активностей'],
+  ] as const) {
+    const p = profile();
+    p.candidates[0].B = count;
+    for (let i = 0; i < count; i++) p.history.push({ record_id: `r${i}`, employee_id: 'emp-1', event_id: 'old', date: '2026-09-01', due_date: null, status: 'completed', completion_pct: 100, score: null, feedback_rating: null, assigned_by: 'self' });
+    const result = await createRecommender()(p, { locale: 'ru' });
+    assert.match(result.recommendations[0].facts![3].value, new RegExp(historyWord));
+    assert.match(result.recommendations[0].summary!, new RegExp(activityWord));
+    assert.match(result.recommendations[0].facts![3].value, /0,50/);
+  }
+  const kk = profile();
+  kk.candidates[0].B = 1;
+  kk.history.push({ record_id: 'r1', employee_id: 'emp-1', event_id: 'old', date: '2026-09-01', due_date: null, status: 'completed', completion_pct: 100, score: null, feedback_rating: null, assigned_by: 'self' });
+  const kkResult = await createRecommender()(kk, { locale: 'kk' });
+  assert.match(kkResult.recommendations[0].facts![3].value, /1 жазба/);
+  assert.match(kkResult.recommendations[0].summary!, /1 іс-шараға/);
+});
+
 test('judge gateway forwards locale without changing its strict request body', async () => {
   const originalFetch = globalThis.fetch;
   const originalUrl = process.env.JUDGE_GATEWAY_URL;
