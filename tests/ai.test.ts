@@ -108,6 +108,9 @@ test('fallback and empty states remain honest', async () => {
   const reached = profile();
   reached.gaps = [];
   assert.equal((await createRecommender()(reached, { apiKey: 'test' })).mode, 'unavailable');
+  const irrelevant = profile();
+  irrelevant.candidates.forEach(c => { c.U = 0; c.B = 0; c.continuing = false; });
+  assert.equal((await createRecommender()(irrelevant, { apiKey: 'test' })).mode, 'unavailable');
   let called = false;
   const wrongModel = createRecommender({ async choose() { called = true; throw new Error('must not call'); } });
   const invalid = await wrongModel(profile(), { apiKey: 'test', model: 'unapproved-model' });

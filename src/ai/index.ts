@@ -99,7 +99,7 @@ function text(value: unknown, max = 240): string { return String(value ?? '').tr
 function finite(value: number): number { return Number.isFinite(value) ? value : 0; }
 
 function eligible(profile: Profile): Candidate[] {
-  return profile.candidates.filter(candidate => candidate.eligible && !candidate.event.mandatory)
+  return profile.candidates.filter(candidate => candidate.eligible && !candidate.event.mandatory && (candidate.U > 0 || candidate.B > 0))
     .sort((a, b) => finite(b.priority) - finite(a.priority) || a.event.event_id.localeCompare(b.event.event_id));
 }
 
