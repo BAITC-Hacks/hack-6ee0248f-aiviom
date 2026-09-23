@@ -1534,6 +1534,9 @@ legend {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .side-stack > .panel:only-child {
+    grid-column: 1 / -1;
+  }
 }
 @media (max-width: 1023px) {
   .sidebar {
