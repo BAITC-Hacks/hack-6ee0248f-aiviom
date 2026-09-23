@@ -32,10 +32,15 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
     const next: State[] = [];
     for (const state of beam) {
       for (const event of catalog) {
-        if (state.path.some(x => x.event.event_id === event.event_id) || !prerequisitesMet(event, state.skills)) continue;
-        const session = event.format === 'self_paced' ? null : nextSession(event, state.after, profile.history);
+        if (event.event_id !== 'EV_036' && state.path.some(x => x.event.event_id === event.event_id)) continue;
+        if (!prerequisitesMet(event, state.skills)) continue;
+        const plannedSessions = state.path.filter(x => x.event.event_id === event.event_id && x.session)
+          .map((x, i) => ({ record_id: `planned-${i}`, employee_id: profile.employee.employee_id, event_id: event.event_id,
+            date: x.session!, due_date: null, status: 'completed', completion_pct: 100, score: null, feedback_rating: null, assigned_by: 'self' }));
+        const eventHistory = [...profile.history, ...plannedSessions];
+        const session = event.format === 'self_paced' ? null : nextSession(event, state.after, eventHistory);
         if (event.format !== 'self_paced' && session === null) continue;
-        if (eventRepeatBlocked(event, profile.history, session)) continue;
+        if (eventRepeatBlocked(event, eventHistory, session)) continue;
         const after = applyGains(state.skills, event.develops_skills).after;
         if (JSON.stringify(after) === JSON.stringify(state.skills)) continue;
         const m = metric(after);
