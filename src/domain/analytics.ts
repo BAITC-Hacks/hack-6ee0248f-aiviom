@@ -56,6 +56,7 @@ export function buildAnalytics(dataset: Dataset, profiles: Profile[], asOf: stri
     no_next_step: { total: Object.values(noNext).reduce((a, b) => a + b, 0), by_reason: noNext },
     no_voluntary_completion_90d: { count: noVoluntary }, catalog_gaps, event_groups,
     on_time: { eligible: timely.length, on_time: onTime, rate_pct: pct(onTime, timely.length) },
+    caveat_codes: ['self_paced_enrollment_date', 'historical_completion_proxy', 'direct_catalog_coverage_only'],
     caveats: [
       'Source self_paced date is enrollment, not confirmed completion time.',
       'Historical completion time without exact completed_at uses date as a proxy.',
