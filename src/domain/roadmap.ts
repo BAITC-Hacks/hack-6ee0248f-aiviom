@@ -72,12 +72,34 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
     if (best.gap === 0) break;
   }
   if (beam.length && best.gap > 0 && best.path.length >= MAX_DEPTH) search_limited = true;
-  const selected = best.path.map(({ event, session }) => ({ event_id: event.event_id, session,
-    status: profile.history.some(h => h.event_id === event.event_id && h.status === 'in_progress') ? 'in_progress' : 'planned',
-    reason: 'contributes_to_goal_or_unlocks_step' }));
+  let projectedSkills = { ...profile.skills };
+  const selected = best.path.map(({ event, session }, index) => {
+    const before = projectedSkills;
+    const after = applyGains(before, event.develops_skills).after;
+    const skill_changes = event.develops_skills.flatMap(gain => {
+      const start = before[gain.skill_id] ?? 0;
+      const end = after[gain.skill_id] ?? 0;
+      if (end <= start) return [];
+      const gap = initial.gaps.find(g => g.skill_id === gain.skill_id);
+      return [{ skill_id: gain.skill_id, name: dataset.skills.find(s => s.skill_id === gain.skill_id)?.name ?? gain.skill_id,
+        before: start, after: end, required: gap?.required ?? null,
+        gap_before: gap ? Math.max(0, gap.required - start) : null,
+        gap_after: gap ? Math.max(0, gap.required - end) : null }];
+    });
+    const priorIds = new Set(best.path.slice(0, index + 1).map(x => x.event.event_id));
+    const unlocks_event_ids = catalog.filter(other => !priorIds.has(other.event_id) &&
+      !prerequisitesMet(other, before) && prerequisitesMet(other, after) &&
+      (other.format === 'self_paced' || nextSession(other, profile.as_of, profile.history) !== null) &&
+      !eventRepeatBlocked(other, profile.history, nextSession(other, profile.as_of, profile.history))).map(other => other.event_id);
+    projectedSkills = after;
+    return { event_id: event.event_id, title: event.title, hours: event.duration_hours, session,
+      status: profile.history.some(h => h.event_id === event.event_id && h.status === 'in_progress') ? 'in_progress' : 'planned',
+      reason: 'contributes_to_goal_or_unlocks_step', skill_changes, unlocks_event_ids };
+  });
   const selectedIds = new Set(selected.map(s => s.event_id));
   const blocked = profile.candidates.filter(c => !selectedIds.has(c.event.event_id) && !c.eligible && c.U > 0)
-    .slice(0, 5).map(c => ({ event_id: c.event.event_id, session: c.session, status: 'blocked', reason: c.reasons.join(', ') }));
+    .slice(0, 5).map(c => ({ event_id: c.event.event_id, title: c.event.title, hours: c.event.duration_hours,
+      session: c.session, status: 'blocked', reason: c.reasons.join(', '), skill_changes: [], unlocks_event_ids: [] }));
   const remaining_gaps: Gap[] = metric(best.skills).gaps.filter(g => g.gap > 0);
   return { alternatives, milestones, steps: [...selected, ...blocked], remaining_gaps, search_limited,
     plan_hours: best.hours, weeks_lower_bound: weeklyBudget && weeklyBudget > 0 ? Math.ceil(best.hours / weeklyBudget) : null };
