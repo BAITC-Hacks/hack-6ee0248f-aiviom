@@ -1,7 +1,7 @@
 import type { Dataset, Event, Gap, Levels, Milestone, Profile, Roadmap, Quest } from '../shared/types.js';
 import { applyGains, audienceAllows, eventRepeatBlocked, gapsFor, nextSession, prerequisitesMet } from './calculation.js';
 
-interface State { skills: Levels; path: { event: Event; session: string | null }[]; after: string; hours: number; gap: number; critical: number }
+interface State { skills: Levels; path: { event: Event; session: string | null; finished_at: string }[]; after: string; hours: number; gap: number; critical: number }
 
 export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: number, quests: Quest[] = []): Roadmap {
   const target = profile.goal ? dataset.role_profiles.find(p => p.role === profile.goal?.target_role && p.grade === profile.goal?.target_grade) ?? null : null;
@@ -53,7 +53,8 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
         const effortDays = weeklyBudget && weeklyBudget > 0 ? Math.ceil(event.duration_hours * 7 / weeklyBudget) : 0;
         const finish = new Date(startDate + 'T00:00:00Z');
         finish.setUTCDate(finish.getUTCDate() + effortDays);
-        const child: State = { skills: after, path: [...state.path, { event, session }], after: finish.toISOString().slice(0, 10),
+        const finished_at = finish.toISOString().slice(0, 10);
+        const child: State = { skills: after, path: [...state.path, { event, session, finished_at }], after: finished_at,
           hours: state.hours + event.duration_hours, gap: m.total_gap, critical };
         const key = `${Object.entries(after).sort(([a], [b]) => a.localeCompare(b)).map(([id, v]) => `${id}:${v}`).join('|')}@${child.after}`;
         if (visited.has(key)) continue;
@@ -73,7 +74,7 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
   }
   if (beam.length && best.gap > 0 && best.path.length >= MAX_DEPTH) search_limited = true;
   let projectedSkills = { ...profile.skills };
-  const selected = best.path.map(({ event, session }, index) => {
+  const selected = best.path.map(({ event, session, finished_at }, index) => {
     const before = projectedSkills;
     const after = applyGains(before, event.develops_skills).after;
     const skill_changes = event.develops_skills.flatMap(gain => {
@@ -87,10 +88,12 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
         gap_after: gap ? Math.max(0, gap.required - end) : null }];
     });
     const priorIds = new Set(best.path.slice(0, index + 1).map(x => x.event.event_id));
-    const unlocks_event_ids = catalog.filter(other => !priorIds.has(other.event_id) &&
-      !prerequisitesMet(other, before) && prerequisitesMet(other, after) &&
-      (other.format === 'self_paced' || nextSession(other, profile.as_of, profile.history) !== null) &&
-      !eventRepeatBlocked(other, profile.history, nextSession(other, profile.as_of, profile.history))).map(other => other.event_id);
+    const unlocks_event_ids = catalog.filter(other => {
+      if (priorIds.has(other.event_id) || prerequisitesMet(other, before) || !prerequisitesMet(other, after)) return false;
+      const availableSession = nextSession(other, finished_at, profile.history);
+      return (other.format === 'self_paced' || availableSession !== null) &&
+        !eventRepeatBlocked(other, profile.history, availableSession);
+    }).map(other => other.event_id);
     projectedSkills = after;
     return { event_id: event.event_id, title: event.title, hours: event.duration_hours, session,
       status: profile.history.some(h => h.event_id === event.event_id && h.status === 'in_progress') ? 'in_progress' : 'planned',
