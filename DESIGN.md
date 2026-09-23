@@ -143,6 +143,8 @@ White panels have a fine border, 12px corners, and 24px padding that tightens to
 
 Active navigation uses an ultramarine tint and text. Preview uses outlined or dashed marks and an explicit preview label. Confirmed milestones use filled marks and confirmation language. Goal coverage, plan completion, and personal credits remain separate metrics.
 
+The employee route presents server-ordered activity steps between the current profile and target requirements. Each step shows status, effort, session, projected skill change, and activities it unlocks; blocked steps keep their reason in a disclosure. Practical projects appear beside the skill step they can advance. The four factual recommendation grounds remain visible before the deeper explanation. Confirmed completion receipts use server-calculated before and after values and never borrow preview values.
+
 ## Do's and Don'ts
 
 ### Do:

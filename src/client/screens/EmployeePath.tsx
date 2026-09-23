@@ -34,6 +34,24 @@ type RichRecommendation = Recommendation & {
   summary?: string;
   facts?: { id: string; factor: string; label: string; value: string }[];
 };
+type RoadmapStep = {
+  event_id: string;
+  session: string | null;
+  status: string;
+  reason: string;
+  title?: string;
+  hours?: number;
+  skill_changes?: {
+    skill_id: string;
+    name: string;
+    before: number;
+    after: number;
+    required: number | null;
+    gap_before: number | null;
+    gap_after: number | null;
+  }[];
+  unlocks_event_ids?: string[];
+};
 
 function ProgressMetric({
   label,
@@ -90,6 +108,9 @@ export function EmployeePath({
   const [evidence, setEvidence] = useState("");
   const [helpReason, setHelpReason] = useState("");
   const [showAllMilestones, setShowAllMilestones] = useState(false);
+  const [historyStatus, setHistoryStatus] = useState("all");
+  const [recommendationsStale, setRecommendationsStale] = useState(false);
+  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
   const [goalRole, setGoalRole] = useState("");
   const [goalGrade, setGoalGrade] = useState("");
   const [budget, setBudget] = useState(4);
@@ -117,6 +138,7 @@ export function EmployeePath({
     recSequence.current += 1;
     previewSequence.current += 1;
     setRecs(null);
+    setRecommendationsStale(Boolean(recs) || recommendationsStale);
     setRecError("");
     setRecBusy(false);
     setPreview(null);
@@ -143,6 +165,33 @@ export function EmployeePath({
   };
   const fmt = (value: number | null | undefined) => formatNum(locale, value);
   const date = (value?: string | null) => formatDate(locale, value);
+  const targetProfile = catalog?.role_profiles.find(
+    (item) =>
+      item.role === profile?.goal?.target_role &&
+      item.grade === profile?.goal?.target_grade,
+  );
+  const allSkillIds = [
+    ...new Set([
+      ...(catalog?.skills.map((skill) => skill.skill_id) ?? []),
+      ...Object.keys(profile?.skills ?? {}),
+      ...Object.keys(targetProfile?.required_skills ?? {}),
+    ]),
+  ].sort((left, right) =>
+    skillName(left).localeCompare(skillName(right), locale),
+  );
+  const filteredHistory = [...(profile?.history ?? [])]
+    .filter(
+      (record) => historyStatus === "all" || record.status === historyStatus,
+    )
+    .sort(
+      (left, right) =>
+        right.date.localeCompare(left.date) ||
+        right.record_id.localeCompare(left.record_id),
+    );
+  const confirmedResult = profile?.completion_results?.at(-1);
+  const roadmapSteps = (roadmap?.steps ?? []) as RoadmapStep[];
+  const plannedSteps = roadmapSteps.filter((step) => step.status !== "blocked");
+  const blockedSteps = roadmapSteps.filter((step) => step.status === "blocked");
 
   async function loadRecs() {
     if (!id || recBusy) return;
@@ -151,7 +200,10 @@ export function EmployeePath({
     setRecError("");
     try {
       const result = await endpoint.recommendations(id);
-      if (sequence === recSequence.current) setRecs(result);
+      if (sequence === recSequence.current) {
+        setRecs(result);
+        setRecommendationsStale(false);
+      }
     } catch (cause) {
       if (sequence === recSequence.current)
         setRecError(
@@ -208,7 +260,10 @@ export function EmployeePath({
         ),
       t("path.evidenceSent"),
     );
-    if (result) setEvidence("");
+    if (result) {
+      setEvidence("");
+      setPendingEventId(selected);
+    }
     setSaving(false);
   }
   async function requestHelp(event: React.FormEvent) {
@@ -287,6 +342,71 @@ export function EmployeePath({
               />
             </div>
           </section>
+          {confirmedResult && (
+            <Panel
+              title={t("path.confirmedResult")}
+              className="confirmed-result"
+            >
+              <p className="muted">
+                {confirmedResult.event_id
+                  ? eventName(confirmedResult.event_id)
+                  : t("path.practicalAlternatives")}{" "}
+                · {date(confirmedResult.confirmed_at)}
+              </p>
+              <div className="confirmed-result-grid">
+                <div>
+                  <strong>{t("path.skillPreview")}</strong>
+                  {confirmedResult.skills.length ? (
+                    confirmedResult.skills.map((skill) => (
+                      <p key={skill.skill_id}>
+                        {skillName(skill.skill_id)}: {fmt(skill.before)} →{" "}
+                        {fmt(skill.after)}
+                      </p>
+                    ))
+                  ) : (
+                    <p>{t("path.noDirectGain")}</p>
+                  )}
+                </div>
+                <div>
+                  <strong>{t("path.coverage")}</strong>
+                  <p>
+                    {confirmedResult.coverage_before == null
+                      ? "—"
+                      : `${fmt(confirmedResult.coverage_before)}%`}{" "}
+                    →{" "}
+                    {confirmedResult.coverage_after == null
+                      ? "—"
+                      : `${fmt(confirmedResult.coverage_after)}%`}
+                  </p>
+                </div>
+                <div>
+                  <strong>{t("path.roadmap")}</strong>
+                  <p>
+                    {confirmedResult.next_event_id_before
+                      ? eventName(confirmedResult.next_event_id_before)
+                      : "—"}{" "}
+                    →{" "}
+                    {confirmedResult.next_event_id_after
+                      ? eventName(confirmedResult.next_event_id_after)
+                      : "—"}
+                  </p>
+                  {!!confirmedResult.unlocked_event_ids.length && (
+                    <small>
+                      {t("path.unlocked", {
+                        names: confirmedResult.unlocked_event_ids
+                          .map(eventName)
+                          .join(", "),
+                      })}
+                    </small>
+                  )}
+                </div>
+                <div>
+                  <strong>XP</strong>
+                  <p>+{fmt(confirmedResult.xp_delta)}</p>
+                </div>
+              </div>
+            </Panel>
+          )}
           <div className="content-grid">
             <div className="main-stack">
               <Panel
@@ -369,12 +489,17 @@ export function EmployeePath({
                     </button>
                   </Notice>
                 )}
-                {!recs && !recBusy && !recError && (
-                  <Empty
-                    title={t("path.recsNotRequested")}
-                    detail={t("path.recsNotRequestedExplain")}
-                  />
-                )}
+                {!recs &&
+                  !recBusy &&
+                  !recError &&
+                  (recommendationsStale ? (
+                    <Notice tone="warning">{t("path.recsNeedRefresh")}</Notice>
+                  ) : (
+                    <Empty
+                      title={t("path.recsNotRequested")}
+                      detail={t("path.recsNotRequestedExplain")}
+                    />
+                  ))}
                 {recs && (
                   <>
                     <Notice
@@ -429,18 +554,30 @@ export function EmployeePath({
                                   </Tag>
                                 </div>
                                 <p>{recommendation.summary || item.reason}</p>
-                                <details className="evidence-details">
-                                  <summary>{t("path.verifiedReasons")}</summary>
-                                  {recommendation.facts?.length ? (
-                                    <dl className="fact-list">
-                                      {recommendation.facts.map((fact) => (
-                                        <React.Fragment key={fact.id}>
+                                {recommendation.facts?.length ? (
+                                  <dl className="recommendation-facts">
+                                    {[
+                                      "grade",
+                                      "skill_gap",
+                                      "history",
+                                      "target_requirements",
+                                    ].map((factor) => {
+                                      const fact = recommendation.facts?.find(
+                                        (entry) => entry.factor === factor,
+                                      );
+                                      return fact ? (
+                                        <div key={factor}>
                                           <dt>{fact.label}</dt>
                                           <dd>{fact.value}</dd>
-                                        </React.Fragment>
-                                      ))}
-                                    </dl>
-                                  ) : (
+                                        </div>
+                                      ) : null;
+                                    })}
+                                  </dl>
+                                ) : null}
+                                <details className="evidence-details">
+                                  <summary>{t("path.verifiedReasons")}</summary>
+                                  <p>{item.reason}</p>
+                                  {!recommendation.facts?.length && (
                                     <ul>
                                       {item.factor_keys.map((factor) => (
                                         <li key={factor}>
@@ -514,6 +651,151 @@ export function EmployeePath({
                 />
                 {roadmap && (
                   <>
+                    <div className="route-sequence">
+                      <div className="route-origin">
+                        <strong>{t("path.currentProfile")}</strong>
+                        <span>
+                          {catalogText(
+                            profile.employee.role,
+                            "title",
+                            profile.employee.role,
+                          )}{" "}
+                          · {enumText("grade", profile.employee.grade)}
+                        </span>
+                      </div>
+                      {plannedSteps.length ? (
+                        plannedSteps.map((step, index) => {
+                          const event = byId.get(step.event_id);
+                          const changedSkillIds = (
+                            step.skill_changes ?? []
+                          ).map((change) => change.skill_id);
+                          const linkedQuests =
+                            roadmap.alternatives?.filter((quest) =>
+                              quest.skill_ids.some((skill) =>
+                                changedSkillIds.includes(skill),
+                              ),
+                            ) ?? [];
+                          return (
+                            <div
+                              className="route-step"
+                              key={`${step.event_id}-${index}`}
+                            >
+                              <span
+                                className="route-connector"
+                                aria-hidden="true"
+                              >
+                                <ArrowRight size={16} />
+                              </span>
+                              <div className="route-step-head">
+                                <strong>
+                                  {step.title
+                                    ? catalogText(
+                                        step.event_id,
+                                        "title",
+                                        step.title,
+                                      )
+                                    : eventName(step.event_id)}
+                                </strong>
+                                <Tag
+                                  tone={
+                                    step.status === "in_progress"
+                                      ? "amber"
+                                      : "neutral"
+                                  }
+                                >
+                                  {enumText("status", step.status)}
+                                </Tag>
+                              </div>
+                              <p className="route-step-meta">
+                                {t("common.hours", {
+                                  count: fmt(
+                                    step.hours ?? event?.duration_hours,
+                                  ),
+                                })}
+                                {step.session ? ` · ${date(step.session)}` : ""}
+                              </p>
+                              {(step.skill_changes ?? []).length ? (
+                                <ul className="route-effects">
+                                  {step.skill_changes?.map((change) => (
+                                    <li key={change.skill_id}>
+                                      {skillName(change.skill_id, change.name)}:{" "}
+                                      {fmt(change.before)} → {fmt(change.after)}
+                                      {change.required != null
+                                        ? ` · ${t("path.requiredLevel", { level: fmt(change.required) })}`
+                                        : ""}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="muted">
+                                  {t("path.routePrerequisite")}
+                                </p>
+                              )}
+                              {!!step.unlocks_event_ids?.length && (
+                                <p className="route-unlocks">
+                                  {t("path.unlocked", {
+                                    names: step.unlocks_event_ids
+                                      .map(eventName)
+                                      .join(", "),
+                                  })}
+                                </p>
+                              )}
+                              {!!linkedQuests.length && (
+                                <div className="route-alternatives">
+                                  <small>{t("path.questAlternative")}</small>
+                                  {linkedQuests.map((quest) => (
+                                    <p key={quest.quest_id}>
+                                      {quest.title} ·{" "}
+                                      {enumText("status", quest.status)} ·{" "}
+                                      {t("path.afterAcceptance")}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="muted">{t(profile.total_gap === 0 ? "path.goalSkillsMet" : "path.noRouteSteps")}</p>
+                      )}
+                      <div className="route-destination">
+                        <span className="route-connector" aria-hidden="true">
+                          <ArrowRight size={16} />
+                        </span>
+                        <strong>{t("path.targetRequirement")}</strong>
+                        <span>
+                          {profile.goal
+                            ? `${catalogText(profile.goal.target_role, "title", profile.goal.target_role)} · ${enumText("grade", profile.goal.target_grade)}`
+                            : t("path.noGoal")}
+                        </span>
+                      </div>
+                    </div>
+                    {!!blockedSteps.length && (
+                      <details className="route-blocked">
+                        <summary>
+                          {t("path.blockedSteps", {
+                            count: fmt(blockedSteps.length),
+                          })}
+                        </summary>
+                        {blockedSteps.map((step) => (
+                          <div
+                            className="route-blocked-row"
+                            key={step.event_id}
+                          >
+                            <strong>{eventName(step.event_id)}</strong>
+                            <span>
+                              {step.reason
+                                .split(", ")
+                                .map((reason) => t(`reason.${reason}`))
+                                .join(" · ")}
+                            </span>
+                          </div>
+                        ))}
+                      </details>
+                    )}
+                    <h3 className="route-milestones-heading">
+                      {t("path.skillMilestones")}
+                    </h3>
                     {roadmap.milestones.length ? (
                       <div className="milestone-list">
                         {(showAllMilestones
@@ -585,26 +867,45 @@ export function EmployeePath({
                             })}
                       </button>
                     )}
-                    {roadmap.alternatives?.length ? (
+                    {roadmap.alternatives?.filter(
+                      (quest) =>
+                        !plannedSteps.some((step) =>
+                          step.skill_changes?.some((change) =>
+                            quest.skill_ids.includes(change.skill_id),
+                          ),
+                        ),
+                    ).length ? (
                       <div className="alternative-list">
                         <h3>{t("path.practicalAlternatives")}</h3>
-                        {roadmap.alternatives.map((quest) => (
-                          <div className="row-item" key={quest.quest_id}>
-                            <div>
-                              <strong>
-                                {catalogText(
-                                  quest.quest_id,
-                                  "title",
-                                  quest.title,
-                                )}
-                              </strong>
-                              <p>
-                                {enumText("status", quest.status)} ·{" "}
-                                {t("path.afterAcceptance")}
-                              </p>
+                        {roadmap.alternatives
+                          .filter(
+                            (quest) =>
+                              !plannedSteps.some((step) =>
+                                step.skill_changes?.some((change) =>
+                                  quest.skill_ids.includes(change.skill_id),
+                                ),
+                              ),
+                          )
+                          .map((quest) => (
+                            <div className="row-item" key={quest.quest_id}>
+                              <div>
+                                <strong>
+                                  {catalogText(
+                                    quest.quest_id,
+                                    "title",
+                                    quest.title,
+                                  )}
+                                </strong>
+                                <p>
+                                  {quest.skill_ids
+                                    .map((skill) => skillName(skill))
+                                    .join(", ")}{" "}
+                                  · {enumText("status", quest.status)} ·{" "}
+                                  {t("path.afterAcceptance")}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     ) : null}
                     <div className="roadmap-meta">
@@ -627,6 +928,60 @@ export function EmployeePath({
               </Panel>
             </div>
             <div className="side-stack">
+              <Panel
+                title={t("path.allSkills")}
+                aside={<Tag>{fmt(allSkillIds.length)}</Tag>}
+              >
+                <div
+                  className="skill-matrix"
+                  role="table"
+                  aria-label={t("path.allSkills")}
+                >
+                  <div className="skill-matrix-head" role="row">
+                    <span role="columnheader">{t("common.skill")}</span>
+                    <span role="columnheader">{t("path.currentLevel")}</span>
+                    <span role="columnheader">{t("path.required")}</span>
+                  </div>
+                  {allSkillIds.map((skillId) => {
+                    const current = profile.skills[skillId] ?? 0;
+                    const required = targetProfile?.required_skills[skillId];
+                    const critical =
+                      targetProfile?.critical_skills.includes(skillId);
+                    return (
+                      <div
+                        className="skill-matrix-row"
+                        role="row"
+                        key={skillId}
+                      >
+                        <span role="cell">
+                          {skillName(skillId)}{" "}
+                          {critical && (
+                            <Tag tone="amber">{t("path.criticalTag")}</Tag>
+                          )}
+                        </span>
+                        <strong role="cell">{fmt(current)}</strong>
+                        <span role="cell">
+                          {required == null ? (
+                            "—"
+                          ) : (
+                            <>
+                              {fmt(required)}
+                              {required > current && (
+                                <small>
+                                  {" "}
+                                  {t("path.gapAmount", {
+                                    count: fmt(required - current),
+                                  })}
+                                </small>
+                              )}
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Panel>
               <Panel title={t("path.goalAndTime")}>
                 <form className="form-stack" onSubmit={saveGoal}>
                   <label>
@@ -737,15 +1092,34 @@ export function EmployeePath({
                 </form>
                 <p className="fine-print">{t("path.helpExplain")}</p>
               </Panel>
-              <details className="panel collapsible-panel">
-                <summary>{t("path.history")}</summary>
+              <Panel
+                title={t("path.history")}
+                aside={<Tag>{fmt(profile.history.length)}</Tag>}
+              >
                 <p className="muted">{t("path.historyExplain")}</p>
+                <label className="history-filter">
+                  {t("path.filterHistory")}
+                  <Select
+                    label={t("path.filterHistory")}
+                    value={historyStatus}
+                    onChange={setHistoryStatus}
+                    options={[
+                      { value: "all", label: t("path.allStatuses") },
+                      ...[
+                        ...new Set(
+                          profile.history.map((record) => record.status),
+                        ),
+                      ].map((status) => ({
+                        value: status,
+                        label: enumText("status", status),
+                      })),
+                    ]}
+                  />
+                </label>
                 {profile.history.length ? (
-                  <div className="history-list">
-                    {[...profile.history]
-                      .reverse()
-                      .slice(0, 8)
-                      .map((record) => (
+                  filteredHistory.length ? (
+                    <div className="history-list" tabIndex={0}>
+                      {filteredHistory.map((record) => (
                         <div className="metric-line" key={record.record_id}>
                           <span>
                             {eventName(record.event_id)}
@@ -759,11 +1133,14 @@ export function EmployeePath({
                           </strong>
                         </div>
                       ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <Empty title={t("path.noFilteredHistory")} />
+                  )
                 ) : (
                   <Empty title={t("path.noHistory")} />
                 )}
-              </details>
+              </Panel>
             </div>
           </div>
           {selectedEvent && (
@@ -887,6 +1264,14 @@ export function EmployeePath({
                 </label>
                 <Submit busy={saving}>{t("path.sendEvidence")}</Submit>
                 <small>{t("path.creditAfterApproval")}</small>
+                {(pendingEventId === selected ||
+                  profile.completion_requests?.some(
+                    (request) =>
+                      request.event_id === selected &&
+                      request.status === "pending",
+                  )) && (
+                  <Notice tone="info">{t("path.awaitingAdvisor")}</Notice>
+                )}
               </form>
             </section>
           )}

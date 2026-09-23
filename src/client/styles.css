@@ -750,6 +750,29 @@ summary:hover {
   padding-left: 20px;
   margin: 4px 0;
 }
+.recommendation-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0;
+}
+.recommendation-facts > div {
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.recommendation-facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.recommendation-facts dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
 .fact-list {
   display: grid;
   grid-template-columns: minmax(110px, 0.6fr) minmax(0, 1fr);
@@ -838,6 +861,242 @@ summary:hover {
   border-top: 1px solid var(--line);
   font-size: 13px;
   color: var(--muted);
+}
+.route-sequence {
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+  margin-bottom: 20px;
+}
+.route-origin,
+.route-destination,
+.route-step {
+  position: relative;
+  padding: 12px 0 14px 38px;
+  min-width: 0;
+}
+.route-origin strong,
+.route-destination strong,
+.route-step strong {
+  display: block;
+  font-size: 15px;
+}
+.route-origin span:not(.route-connector),
+.route-destination span:not(.route-connector) {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.route-step::before,
+.route-destination::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 12px;
+  top: 0;
+  bottom: 0;
+  border-inline-start: 1px solid var(--line);
+}
+.route-connector {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  transform: rotate(90deg);
+}
+.route-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.route-step-head strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.route-step-meta,
+.route-unlocks,
+.route-effects,
+.route-alternatives p {
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 5px 0;
+  color: var(--muted);
+}
+.route-effects {
+  padding-inline-start: 18px;
+}
+.route-effects li + li {
+  margin-top: 4px;
+}
+.route-alternatives {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--soft);
+  border-radius: 8px;
+}
+.route-alternatives small {
+  color: var(--ink);
+  font-weight: 650;
+}
+.route-milestones-heading {
+  font-size: 16px;
+  margin: 22px 0 16px;
+}
+.route-blocked {
+  margin: 12px 0;
+}
+.route-blocked summary {
+  color: var(--accent);
+  font-weight: 650;
+  padding: 8px 0;
+}
+.route-blocked-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.route-blocked-row span {
+  color: var(--muted);
+}
+.skill-matrix {
+  width: 100%;
+}
+.skill-matrix-head,
+.skill-matrix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px 72px;
+  gap: 8px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.skill-matrix-head {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.skill-matrix-row:last-child {
+  border-bottom: 0;
+}
+.skill-matrix-row > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.skill-matrix-row .tag {
+  margin-top: 4px;
+}
+.skill-matrix-row small {
+  display: block;
+  color: var(--warning);
+}
+.inline-critical {
+  display: inline-block;
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 650;
+}
+.history-filter {
+  display: block;
+  margin: 12px 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+.history-filter > * {
+  margin-top: 5px;
+}
+.confirmed-result {
+  margin-bottom: 24px;
+}
+.confirmed-result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.confirmed-result-grid > div {
+  min-width: 0;
+  padding-block: 10px;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.confirmed-result-grid strong {
+  font-size: 13px;
+}
+.confirmed-result-grid p {
+  margin: 6px 0;
+  font-size: 15px;
+}
+.confirmed-result-grid small {
+  color: var(--muted);
+}
+.participation-kind {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.participation-kind h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.catalog-gap-item {
+  border-top: 1px solid var(--line);
+  padding: 10px 0;
+}
+.catalog-gap-item summary {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.catalog-gap-item summary strong {
+  font-size: 14px;
+}
+.catalog-gap-item summary span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.gap-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.gap-employees {
+  padding-inline-start: 20px;
+  margin: 10px 0 0;
+}
+.gap-employees li {
+  padding: 4px 0;
+}
+.gap-employees small {
+  display: block;
+  color: var(--muted);
+}
+.people-route-step {
+  position: relative;
+  padding: 9px 0 9px 18px;
+  border-inline-start: 1px solid var(--line);
+  font-size: 13px;
+}
+.people-route-step strong,
+.people-route-step small {
+  display: block;
+}
+.people-route-step small {
+  color: var(--muted);
+  margin-top: 4px;
 }
 .alternative-list {
   border-top: 1px solid var(--line);
@@ -1593,6 +1852,9 @@ legend {
   }
 }
 @media (max-width: 850px) {
+  .confirmed-result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .content-grid {
     grid-template-columns: 1fr;
   }
@@ -1608,6 +1870,9 @@ legend {
   }
 }
 @media (max-width: 767px) {
+  .recommendation-facts {
+    grid-template-columns: 1fr;
+  }
   .content {
     padding: 24px 16px 110px;
   }
@@ -1734,6 +1999,10 @@ legend {
   }
 }
 @media (max-width: 390px) {
+  .confirmed-result-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
   .topbar {
     gap: 8px;
   }

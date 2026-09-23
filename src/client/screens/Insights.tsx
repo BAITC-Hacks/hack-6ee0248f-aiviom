@@ -39,7 +39,32 @@ interface Analytics {
   mandatory_overdue: { count: number };
   no_next_step: { total: number; by_reason: Record<string, number> };
   no_voluntary_completion_90d: { count: number };
-  catalog_gaps: { skill_id: string; name: string; employees: number }[];
+  catalog_gaps: {
+    skill_id: string;
+    name: string;
+    employees: number;
+    with_gap?: number;
+    with_next_step?: number;
+    without_next_step?: number;
+    by_reason?: Record<string, number>;
+    affected_employees?: {
+      employee_id: string;
+      full_name: string;
+      reason: string;
+    }[];
+  }[];
+  participation_breakdown?: Record<
+    "mandatory" | "voluntary",
+    {
+      total: number;
+      completed: number;
+      completion_pct: number | null;
+      no_show: number;
+      declined: number;
+      overdue: number;
+      by_status: Record<string, number>;
+    }
+  >;
   event_groups: { event_id: string; title: string; employees: number }[];
   on_time: { eligible: number; on_time: number; rate_pct: number | null };
   caveats: string[];
@@ -170,9 +195,13 @@ function FileSlot({
 export function Insights({
   revision,
   action,
+  onInspect,
+  onImported,
 }: {
   revision: number;
   action: Action;
+  onInspect: (id: string) => void;
+  onImported: (id: string | null) => void;
 }) {
   const { locale, t, catalogText, enumText } = useI18n();
   const dataLoad = useLoad(endpoint.analytics, [revision]);
@@ -284,9 +313,26 @@ export function Insights({
       );
     }
     if (result) {
+      const raw = (preview.body as { employees?: unknown }).employees;
+      const first = Array.isArray(raw)
+        ? raw[0]
+        : raw &&
+            typeof raw === "object" &&
+            "employees" in raw &&
+            Array.isArray(raw.employees)
+          ? raw.employees[0]
+          : raw;
+      const importedId =
+        first &&
+        typeof first === "object" &&
+        "employee_id" in first &&
+        typeof first.employee_id === "string"
+          ? first.employee_id
+          : null;
       invalidate();
       setEmployees(null);
       setHistory(null);
+      onImported(importedId);
     }
     setBusy(false);
   }
@@ -328,7 +374,10 @@ export function Insights({
             retry={dataLoad.refresh}
           />
           {dataLoad.data && (
-            <AnalyticsView value={dataLoad.data as unknown as Analytics} />
+            <AnalyticsView
+              value={dataLoad.data as unknown as Analytics}
+              onInspect={onInspect}
+            />
           )}
         </>
       )}
@@ -419,7 +468,13 @@ export function Insights({
   );
 }
 
-function AnalyticsView({ value }: { value: Analytics }) {
+function AnalyticsView({
+  value,
+  onInspect,
+}: {
+  value: Analytics;
+  onInspect: (id: string) => void;
+}) {
   const { locale, t, catalogText, enumText } = useI18n();
   const num = (value: number | null | undefined) => formatNum(locale, value);
   const pct = (value: number | null | undefined) =>
@@ -517,55 +572,128 @@ function AnalyticsView({ value }: { value: Analytics }) {
       </div>
       <div className="content-grid">
         <Panel title={t("insights.participation")}>
-          <div className="metric-line">
-            <span>{t("insights.completed")}</span>
-            <strong>
-              {t("common.of", {
-                current: num(value.completions?.completed),
-                total: num(value.completions?.total),
-              })}{" "}
-              · {pct(value.completions?.rate_pct)}
-            </strong>
-          </div>
-          {Object.entries(value.completions?.by_status ?? {}).map(
-            ([status, count]) => (
-              <div className="metric-line" key={status}>
-                <span>{enumText("status", status)}</span>
-                <strong>{num(count)}</strong>
+          {(["mandatory", "voluntary"] as const).map((kind) => {
+            const breakdown = value.participation_breakdown?.[kind];
+            return breakdown ? (
+              <div className="participation-kind" key={kind}>
+                <h3>{t(`insights.${kind}`)}</h3>
+                <div className="metric-line">
+                  <span>{t("insights.completed")}</span>
+                  <strong>
+                    {num(breakdown.completed)} / {num(breakdown.total)} ·{" "}
+                    {pct(breakdown.completion_pct)}
+                  </strong>
+                </div>
+                <div className="metric-line">
+                  <span>{t("insights.noShow")}</span>
+                  <strong>{num(breakdown.no_show)}</strong>
+                </div>
+                <div className="metric-line">
+                  <span>{t("insights.declined")}</span>
+                  <strong>{num(breakdown.declined)}</strong>
+                </div>
+                <div className="metric-line">
+                  <span>{t("insights.overdue")}</span>
+                  <strong>{num(breakdown.overdue)}</strong>
+                </div>
               </div>
-            ),
-          )}
-          <h3>{t("insights.sessionsAndDates")}</h3>
-          <div className="metric-line">
-            <span>{t("insights.noShow")}</span>
-            <strong>
-              {t("common.of", {
-                current: num(value.no_show?.no_show),
-                total: num(value.no_show?.eligible),
-              })}{" "}
-              · {pct(value.no_show?.rate_pct)}
-            </strong>
-          </div>
-          <div className="metric-line">
-            <span>{t("insights.onTime")}</span>
-            <strong>
-              {t("common.of", {
-                current: num(value.on_time?.on_time),
-                total: num(value.on_time?.eligible),
-              })}{" "}
-              · {pct(value.on_time?.rate_pct)}
-            </strong>
-          </div>
+            ) : null;
+          })}
+          <details className="analytics-details">
+            <summary>{t("insights.allParticipation")}</summary>
+            <div className="metric-line">
+              <span>{t("insights.completed")}</span>
+              <strong>
+                {t("common.of", {
+                  current: num(value.completions?.completed),
+                  total: num(value.completions?.total),
+                })}{" "}
+                · {pct(value.completions?.rate_pct)}
+              </strong>
+            </div>
+            {Object.entries(value.completions?.by_status ?? {}).map(
+              ([status, count]) => (
+                <div className="metric-line" key={status}>
+                  <span>{enumText("status", status)}</span>
+                  <strong>{num(count)}</strong>
+                </div>
+              ),
+            )}
+            <h3>{t("insights.sessionsAndDates")}</h3>
+            <div className="metric-line">
+              <span>{t("insights.noShow")}</span>
+              <strong>
+                {t("common.of", {
+                  current: num(value.no_show?.no_show),
+                  total: num(value.no_show?.eligible),
+                })}{" "}
+                · {pct(value.no_show?.rate_pct)}
+              </strong>
+            </div>
+            <div className="metric-line">
+              <span>{t("insights.onTime")}</span>
+              <strong>
+                {t("common.of", {
+                  current: num(value.on_time?.on_time),
+                  total: num(value.on_time?.eligible),
+                })}{" "}
+                · {pct(value.on_time?.rate_pct)}
+              </strong>
+            </div>
+          </details>
         </Panel>
         <Panel title={t("insights.catalogGaps")}>
           <p className="muted">{t("insights.catalogGapHint")}</p>
           {value.catalog_gaps?.length ? (
-            <div>
+            <div className="catalog-gap-list">
               {value.catalog_gaps.map((item) => (
-                <div className="metric-line" key={item.skill_id}>
-                  <span>{catalogText(item.skill_id, "title", item.name)}</span>
-                  <strong>{num(item.employees)}</strong>
-                </div>
+                <details className="catalog-gap-item" key={item.skill_id}>
+                  <summary>
+                    <strong>
+                      {catalogText(item.skill_id, "title", item.name)}
+                    </strong>
+                    <span>
+                      {t("insights.gapPairs", {
+                        count: num(item.with_gap ?? item.employees),
+                      })}{" "}
+                      ·{" "}
+                      {t("insights.withStep", {
+                        count: num(item.with_next_step),
+                      })}{" "}
+                      ·{" "}
+                      {t("insights.withoutStep", {
+                        count: num(item.without_next_step ?? item.employees),
+                      })}
+                    </span>
+                  </summary>
+                  {!!Object.keys(item.by_reason ?? {}).length && (
+                    <div className="gap-reasons">
+                      {Object.entries(item.by_reason ?? {}).map(
+                        ([reason, count]) => (
+                          <span key={reason}>
+                            {t(`reason.${reason}`)}: {num(count)}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  )}
+                  {!!item.affected_employees?.length && (
+                    <ul className="gap-employees">
+                      {item.affected_employees.map((employee) => (
+                        <li key={employee.employee_id}>
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => onInspect(employee.employee_id)}
+                          >
+                            {employee.full_name}
+                          </button>
+                          <small>{t(`reason.${employee.reason}`)}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </details>
               ))}
             </div>
           ) : (
@@ -604,7 +732,14 @@ function AnalyticsView({ value }: { value: Analytics }) {
                   {
                     key: "name",
                     title: t("common.employee"),
-                    render: (row) => row.full_name,
+                    render: (row) => (
+                      <button
+                        className="text-button"
+                        onClick={() => onInspect(row.employee_id)}
+                      >
+                        {row.full_name}
+                      </button>
+                    ),
                   },
                   {
                     key: "reason",

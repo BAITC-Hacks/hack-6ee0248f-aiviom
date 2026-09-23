@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
-import type { Session } from "../api";
+import type { ConfirmedResult, Session } from "../api";
 import { endpoint } from "../api";
 import { useI18n } from "../i18n";
 import { Select } from "../Select";
@@ -27,11 +27,13 @@ export function People({
   revision,
   action,
   onSwitch,
+  inspectionEmployeeId,
 }: {
   session: Session;
   revision: number;
   action: Action;
   onSwitch: (id: string) => Promise<void>;
+  inspectionEmployeeId?: string | null;
 }) {
   const { locale, t, catalogText, enumText } = useI18n();
   const employeesLoad = useLoad(endpoint.employees, [
@@ -48,6 +50,9 @@ export function People({
     session.identity.id,
   ]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [historyStatus, setHistoryStatus] = useState("all");
+  const [lastConfirmation, setLastConfirmation] =
+    useState<ConfirmedResult | null>(null);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(30);
   const [eventId, setEventId] = useState("");
@@ -59,11 +64,22 @@ export function People({
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const employees = employeesLoad.data?.employees ?? [];
+  useEffect(() => {
+    if (!inspectionEmployeeId) return;
+    setSelected(inspectionEmployeeId);
+    const inspected = employees.find((item) => item.employee_id === inspectionEmployeeId);
+    if (inspected) setSearch(inspected.full_name);
+  }, [inspectionEmployeeId, employeesLoad.data]);
   const active =
     employees.find((item) => item.employee_id === selected) ?? employees[0];
   const profileLoad = useLoad(
     () =>
       active ? endpoint.profile(active.employee_id) : Promise.resolve(null),
+    [active?.employee_id, revision],
+  );
+  const roadmapLoad = useLoad(
+    () =>
+      active ? endpoint.roadmap(active.employee_id) : Promise.resolve(null),
     [active?.employee_id, revision],
   );
   const filtered = employees.filter((item) =>
@@ -74,6 +90,23 @@ export function People({
   const visible = filtered.slice(0, visibleCount);
   const events = catalogLoad.data?.events ?? [];
   const num = (value: number | null | undefined) => formatNum(locale, value);
+  const targetProfile = catalogLoad.data?.role_profiles.find(
+    (item) =>
+      item.role === profileLoad.data?.goal?.target_role &&
+      item.grade === profileLoad.data?.goal?.target_grade,
+  );
+  const allSkillIds = [
+    ...new Set([
+      ...(catalogLoad.data?.skills.map((skill) => skill.skill_id) ?? []),
+      ...Object.keys(profileLoad.data?.skills ?? {}),
+      ...Object.keys(targetProfile?.required_skills ?? {}),
+    ]),
+  ].sort((left, right) =>
+    catalogText(left, "title", left).localeCompare(
+      catalogText(right, "title", right),
+      locale,
+    ),
+  );
   async function assign(event: React.FormEvent) {
     event.preventDefault();
     if (!active || !eventId || busy) return;
@@ -102,6 +135,14 @@ export function People({
         : t("people.completionAccepted"),
     );
     if (result) {
+      if (
+        decision.kind === "completion" &&
+        typeof result === "object" &&
+        "result" in result &&
+        result.result
+      ) {
+        setLastConfirmation(result.result as ConfirmedResult);
+      }
       setDecision(null);
       setReason("");
     }
@@ -114,6 +155,65 @@ export function People({
         error={employeesLoad.error}
         retry={employeesLoad.refresh}
       />
+      {lastConfirmation && (
+        <section className="panel confirmed-result" aria-live="polite">
+          <div className="panel-head">
+            <h2>{t("path.confirmedResult")}</h2>
+          </div>
+          <p className="muted">
+            {employees.find(
+              (item) => item.employee_id === lastConfirmation.employee_id,
+            )?.full_name ?? lastConfirmation.employee_id}
+          </p>
+          <div className="confirmed-result-grid">
+            <div>
+              <strong>{t("path.skillPreview")}</strong>
+              {lastConfirmation.skills.map((skill) => (
+                <p key={skill.skill_id}>
+                  {catalogText(skill.skill_id, "title", skill.skill_id)}:{" "}
+                  {num(skill.before)} → {num(skill.after)}
+                </p>
+              ))}
+            </div>
+            <div>
+              <strong>{t("path.coverage")}</strong>
+              <p>
+                {lastConfirmation.coverage_before == null
+                  ? "—"
+                  : `${num(lastConfirmation.coverage_before)}%`}{" "}
+                →{" "}
+                {lastConfirmation.coverage_after == null
+                  ? "—"
+                  : `${num(lastConfirmation.coverage_after)}%`}
+              </p>
+            </div>
+            <div>
+              <strong>{t("path.roadmap")}</strong>
+              <p>
+                {lastConfirmation.next_event_id_before
+                  ? catalogText(
+                      lastConfirmation.next_event_id_before,
+                      "title",
+                      lastConfirmation.next_event_id_before,
+                    )
+                  : "—"}{" "}
+                →{" "}
+                {lastConfirmation.next_event_id_after
+                  ? catalogText(
+                      lastConfirmation.next_event_id_after,
+                      "title",
+                      lastConfirmation.next_event_id_after,
+                    )
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <strong>XP</strong>
+              <p>+{num(lastConfirmation.xp_delta)}</p>
+            </div>
+          </div>
+        </section>
+      )}
       <div className="content-grid">
         <div className="main-stack">
           <Panel
@@ -334,23 +434,165 @@ export function People({
                       })}
                     </strong>
                   </div>
-                  <h4>{t("people.needsDevelopment")}</h4>
-                  {profileLoad.data.gaps.some((gap) => gap.gap > 0) ? (
-                    <ul className="simple-list">
-                      {profileLoad.data.gaps
-                        .filter((gap) => gap.gap > 0)
-                        .slice(0, 6)
-                        .map((gap) => (
-                          <li key={gap.skill_id}>
-                            {catalogText(gap.skill_id, "title", gap.name)}:{" "}
-                            {num(gap.current)} → {num(gap.required)}
-                            {gap.critical ? ` · ${t("path.criticalTag")}` : ""}
-                          </li>
+                  <h4>{t("path.allSkills")}</h4>
+                  <div
+                    className="skill-matrix"
+                    role="table"
+                    aria-label={t("path.allSkills")}
+                  >
+                    <div className="skill-matrix-head" role="row">
+                      <span role="columnheader">{t("common.skill")}</span>
+                      <span role="columnheader">{t("path.currentLevel")}</span>
+                      <span role="columnheader">{t("path.required")}</span>
+                    </div>
+                    {allSkillIds.map((skillId) => {
+                      const current = profileLoad.data?.skills[skillId] ?? 0;
+                      const required = targetProfile?.required_skills[skillId];
+                      return (
+                        <div
+                          className="skill-matrix-row"
+                          role="row"
+                          key={skillId}
+                        >
+                          <span role="cell">
+                            {catalogText(
+                              skillId,
+                              "title",
+                              catalogLoad.data?.skills.find(
+                                (skill) => skill.skill_id === skillId,
+                              )?.name ?? skillId,
+                            )}{" "}
+                            {targetProfile?.critical_skills.includes(
+                              skillId,
+                            ) && (
+                              <span className="inline-critical">
+                                {t("path.criticalTag")}
+                              </span>
+                            )}
+                          </span>
+                          <strong role="cell">{num(current)}</strong>
+                          <span role="cell">
+                            {required == null ? (
+                              "—"
+                            ) : (
+                              <>
+                                {num(required)}
+                                {required > current && (
+                                  <small>
+                                    {t("path.gapAmount", {
+                                      count: num(required - current),
+                                    })}
+                                  </small>
+                                )}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <h4>{t("path.roadmap")}</h4>
+                  <Status
+                    loading={roadmapLoad.busy}
+                    error={roadmapLoad.error}
+                    retry={roadmapLoad.refresh}
+                  />
+                  {roadmapLoad.data && (
+                    <div className="people-route">
+                      {roadmapLoad.data.steps
+                        .filter((step) => step.status !== "blocked")
+                        .map((step, index) => (
+                          <div
+                            key={`${step.event_id}-${index}`}
+                            className="people-route-step"
+                          >
+                            <strong>
+                              {catalogText(
+                                step.event_id,
+                                "title",
+                                events.find(
+                                  (event) => event.event_id === step.event_id,
+                                )?.title ?? step.event_id,
+                              )}
+                            </strong>
+                            <small>
+                              {enumText("status", step.status)} ·{" "}
+                              {t("common.hours", {
+                                count: num(
+                                  events.find(
+                                    (event) => event.event_id === step.event_id,
+                                  )?.duration_hours,
+                                ),
+                              })}
+                              {step.session ? ` · ${step.session}` : ""}
+                            </small>
+                          </div>
                         ))}
-                    </ul>
-                  ) : (
-                    <p className="muted">{t("people.noGaps")}</p>
+                      {!roadmapLoad.data.steps.some(
+                        (step) => step.status !== "blocked",
+                      ) && (
+                        <p className="muted">
+                          {profileLoad.data?.no_next_reason
+                            ? t(`reason.${profileLoad.data.no_next_reason}`)
+                            : t("path.noRouteSteps")}
+                        </p>
+                      )}
+                    </div>
                   )}
+                  <h4>{t("path.history")}</h4>
+                  <label className="history-filter">
+                    {t("path.filterHistory")}
+                    <Select
+                      label={t("path.filterHistory")}
+                      value={historyStatus}
+                      onChange={setHistoryStatus}
+                      options={[
+                        { value: "all", label: t("path.allStatuses") },
+                        ...[
+                          ...new Set(
+                            profileLoad.data.history.map(
+                              (record) => record.status,
+                            ),
+                          ),
+                        ].map((status) => ({
+                          value: status,
+                          label: enumText("status", status),
+                        })),
+                      ]}
+                    />
+                  </label>
+                  <div className="history-list" tabIndex={0}>
+                    {profileLoad.data.history
+                      .filter(
+                        (record) =>
+                          historyStatus === "all" ||
+                          record.status === historyStatus,
+                      )
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .map((record) => (
+                        <div className="metric-line" key={record.record_id}>
+                          <span>
+                            {catalogText(
+                              record.event_id,
+                              "title",
+                              events.find(
+                                (event) => event.event_id === record.event_id,
+                              )?.title ?? record.event_id,
+                            )}
+                            <small>
+                              {record.date} ·{" "}
+                              {enumText("status", record.status)}
+                            </small>
+                          </span>
+                        </div>
+                      ))}
+                    {!profileLoad.data.history.length && (
+                      <p className="muted">{t("path.noHistory")}</p>
+                    )}
+                    {!!profileLoad.data.history.length && !profileLoad.data.history.some((record) => historyStatus === "all" || record.status === historyStatus) && (
+                      <p className="muted">{t("path.noFilteredHistory")}</p>
+                    )}
+                  </div>
                   {session.identity.role === "hr" && (
                     <button
                       className="button secondary small"

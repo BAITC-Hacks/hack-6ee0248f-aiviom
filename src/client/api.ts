@@ -17,6 +17,25 @@ export interface ExtendedProfile extends Profile {
   weekly_budget: number;
   plan_items: string[];
   help_requests: Record<string, unknown>[];
+  completion_requests?: { id: string; event_id: string; status: string }[];
+  completion_results?: ConfirmedResult[];
+}
+
+export interface ConfirmedResult {
+  id: string;
+  event_id: string | null;
+  quest_id: string | null;
+  employee_id: string;
+  confirmed_at: string;
+  skills: { skill_id: string; before: number; after: number; delta: number }[];
+  coverage_before: number | null;
+  coverage_after: number | null;
+  total_gap_before: number;
+  total_gap_after: number;
+  unlocked_event_ids: string[];
+  next_event_id_before: string | null;
+  next_event_id_after: string | null;
+  xp_delta: number;
 }
 
 export interface Catalog { events: Event[]; skills: Skill[]; role_profiles: RoleProfile[] }
@@ -70,7 +89,7 @@ export const endpoint = {
   plan: (employee_id: string, event_id: string) => api<{ ok: true }>('/api/plan', 'POST', { employee_id, event_id }),
   completionRequest: (employee_id: string, event_id: string, evidence: string, session?: string) => api<{ ok: true }>('/api/completion-requests', 'POST', { employee_id, event_id, evidence, session, idempotency_key: crypto.randomUUID() }),
   completionRequests: () => api<{ requests: Record<string, unknown>[] }>('/api/completion-requests'),
-  acceptCompletion: (id: string, reason: string) => api<unknown>(`/api/completion-requests/${encodeURIComponent(id)}/accept`, 'POST', { reason }),
+  acceptCompletion: (id: string, reason: string) => api<{ ok: boolean; duplicate?: boolean; xp?: number; result?: ConfirmedResult }>(`/api/completion-requests/${encodeURIComponent(id)}/accept`, 'POST', { reason }),
   quests: () => api<{ quests: Quest[] }>('/api/side-quests'),
   createQuest: (body: unknown) => api<Quest>('/api/side-quests', 'POST', body),
   reviewQuest: (id: string, body: unknown) => api<Quest>(`/api/side-quests/${encodeURIComponent(id)}/review`, 'POST', body),
