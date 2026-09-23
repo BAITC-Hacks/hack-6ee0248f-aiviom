@@ -24,11 +24,11 @@ Fact-based alternatives, non-mutating impact preview, verified alternative paths
 
 ## Operating Context
 
-HackAlem Case 1, private official repository. Synthetic source snapshot 2026-10-01. Independent judge clone and hosted AI access required; hosting pending.
+HackAlem Case 1 in the official private repository. Synthetic source snapshot 2026-10-01. The atlas rebrand is a separate post-hackathon release; production activation follows acceptance.
 
 ## Capabilities and Constraints
 
-Five isolated demo roles, immutable source dataset, server RBAC, transactional credits. Skills do not guarantee promotion. No public leaderboard. RU primary, dictionary fallback for kk/en.
+Five isolated demo roles, immutable source dataset, server RBAC, transactional credits. Skills do not guarantee promotion. No public leaderboard. Russian is the default; Russian, Kazakh, and English have typed UI dictionaries and stable-ID source catalog translations. Unknown imported content remains in its source language.
 
 ## Brand Commitments
 
