@@ -53,3 +53,13 @@ Recommendations and judge gateway propagate language, including offline/failure 
 Errors retain `{code,user_message,retryable,request_id}` and may add `message_key` and safe `params`. Import row issues add `code` and `message_key`; warning details add controlled codes/parameters. Domain returns canonical codes and compatibility text; the server localizes presentation. UI shows translated field labels, never raw object dumps.
 
 Catalog translations are separate from immutable source JSON and keyed by stable IDs. Recognized source fields are translated only while matching the source snapshot; unknown imported/edited content remains original. UI language persists locally; draft input is never translated or discarded on language change.
+
+## Final Must-have additions (compatible)
+
+- Goal PUT also accepts `{weekly_budget}` alone. If the effective target is unchanged, only the budget changes; `plan_baseline_gap`, `plan_version`, `plan_items` and earned progress survive. A different goal starts a new plan version.
+- Profile adds `plan_version`, `plan_baseline_gap`, employee-scoped `completion_requests` and the latest five `completion_results` in chronological order.
+- First completion/accept returns `result: ConfirmedResult`: actual skill before/after/delta, coverage before/after, total gaps, newly eligible useful event IDs, next roadmap event before/after and XP. The receipt is persisted in the same SQLite transaction as credit and reward. Duplicate returns `duplicate:true,xp:0` without another receipt. Accepted side quests expose their receipt through the profile while retaining the old quest response.
+- Only server-confirmed new history/quest credits carry `application_credit`. This trusted flag lets a new confirmation on the review date count once, while source/imported reviewed history does not count again. Import normalization strips the flag.
+- Roadmap steps add title, hours, skill changes, target levels and newly unlocked event IDs. Unlock sessions are evaluated at projected completion time.
+- HR `catalog_gaps` reports `with_gap`, `with_next_step`, `without_next_step`, reason counts and scoped affected employees per skill. `participation_breakdown` separates mandatory/voluntary completion, no-show, decline and overdue counts.
+- AI callers pass the complete server-owned catalog for full relevant-history aggregation. LLM output is restricted to IDs, validated priority codes and evidence references; human-readable factual claims are server rendered. No personal name or raw employee history is sent to the model.

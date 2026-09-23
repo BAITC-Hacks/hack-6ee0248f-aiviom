@@ -4,6 +4,8 @@
 
 ## Skill state and goal
 
+Per the source dataset README, an omitted skill means level 0, not a missing measurement. This explicit source-schema rule is also used for imports of that schema; unrelated unknown dates, costs, durations and denominators are not converted to zero.
+
 The employee's `skills` are the review baseline. For each `completed` history record with effective completion date strictly after `last_review_date` and no later than `as_of`, apply event gains in `(effective date, stable ID)` order. `completed_at` is exact when supplied; otherwise historical `date` is a **proxy** and provenance says so. A historical completion on the review date is already in baseline. An application-confirmed completion on that same day is applied only when the trusted server has set `application_credit: true`; imported/source history cannot set this marker. In-progress, declined, dropped, no-show and overdue records give no gain. Separate approved side-quest credits use the same date rule and trusted marker; a credit whose `source_id` equals an already applied history `record_id` is ignored to avoid duplicate gain.
 
 For each gain, `delta = max(0, min(gain, max_level - current, 5 - current))`. Levels must be 0–5, gains nonnegative and caps 0–5. A cap below current level never lowers a skill.
