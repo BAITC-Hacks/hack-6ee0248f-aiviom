@@ -7,11 +7,10 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
   const target = profile.goal ? dataset.role_profiles.find(p => p.role === profile.goal?.target_role && p.grade === profile.goal?.target_grade) ?? null : null;
   const catalog = dataset.events.filter(e => !e.mandatory && audienceAllows(e, profile.employee));
   const initial = gapsFor(dataset, profile.skills, target);
-  const milestoneEvents = (skillId: string) => catalog.filter(e => e.develops_skills.some(g => g.skill_id === skillId && g.gain > 0)).map(e => e.event_id);
+  const milestoneEvents = (skillId: string) => profile.candidates.filter(c => !c.reasons.includes('already_completed') && !c.reasons.includes('audience_blocked') && (c.deltas[skillId] ?? 0) > 0).map(c => c.event.event_id);
   const milestones: Milestone[] = initial.gaps.map(g => ({
     skill_id: g.skill_id, name: g.name, current: g.current, required: g.required, critical: g.critical,
-    status: g.gap === 0 ? 'met' : catalog.some(e => e.develops_skills.some(x => x.skill_id === g.skill_id && x.gain > 0) &&
-      prerequisitesMet(e, profile.skills) && (e.format === 'self_paced' || nextSession(e, profile.as_of, profile.history))) ? 'available' : 'blocked',
+    status: g.gap === 0 ? 'met' : profile.candidates.some(c => c.eligible && (c.deltas[g.skill_id] ?? 0) > 0) ? 'available' : 'blocked',
     event_ids: milestoneEvents(g.skill_id),
   }));
   if (!target || initial.total_gap === 0) return { milestones, steps: [], remaining_gaps: initial.gaps.filter(g => g.gap > 0), search_limited: false, plan_hours: 0, weeks_lower_bound: weeklyBudget && weeklyBudget > 0 ? 0 : null };
@@ -28,6 +27,7 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
   const BEAM_WIDTH = 24;
   const MAX_STATES = 512;
   let explored = 0;
+  let exhausted = false;
   for (let depth = 0; depth < MAX_DEPTH && beam.length; depth++) {
     const next: State[] = [];
     for (const state of beam) {
@@ -45,7 +45,11 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
         if (JSON.stringify(after) === JSON.stringify(state.skills)) continue;
         const m = metric(after);
         const critical = m.gaps.filter(g => g.critical).reduce((n, g) => n + g.gap, 0);
-        const child: State = { skills: after, path: [...state.path, { event, session }], after: session ?? state.after,
+        const startDate = session ?? state.after;
+        const effortDays = weeklyBudget && weeklyBudget > 0 ? Math.ceil(event.duration_hours * 7 / weeklyBudget) : 0;
+        const finish = new Date(startDate + 'T00:00:00Z');
+        finish.setUTCDate(finish.getUTCDate() + effortDays);
+        const child: State = { skills: after, path: [...state.path, { event, session }], after: finish.toISOString().slice(0, 10),
           hours: state.hours + event.duration_hours, gap: m.total_gap, critical };
         const key = `${Object.entries(after).sort(([a], [b]) => a.localeCompare(b)).map(([id, v]) => `${id}:${v}`).join('|')}@${child.after}`;
         if (visited.has(key)) continue;
@@ -53,11 +57,11 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
         next.push(child);
         explored++;
         if (score(child) < score(best) || score(child) === score(best) && child.path.map(x => x.event.event_id).join() < best.path.map(x => x.event.event_id).join()) best = child;
-        if (explored >= MAX_STATES) { search_limited = true; break; }
+        if (explored >= MAX_STATES) { search_limited = true; exhausted = true; break; }
       }
-      if (search_limited) break;
+      if (exhausted) break;
     }
-    if (search_limited) break;
+    if (exhausted) break;
     next.sort((a, b) => score(a) - score(b) || a.path.map(x => x.event.event_id).join().localeCompare(b.path.map(x => x.event.event_id).join()));
     if (next.length > BEAM_WIDTH) search_limited = true;
     beam = next.slice(0, BEAM_WIDTH);

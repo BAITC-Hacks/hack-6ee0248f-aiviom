@@ -45,3 +45,5 @@ Employee input accepts a single profile, array or `{employees:[...]}` wrapper. H
 | `on_time` | `eligible`, `on_time`, `rate_pct` | Completed records with **exact** `completed_at` and `due_date` |
 
 All zero-denominator rates are `null`. The caller must select the report period/cohort; the default here is all records through `as_of`. `catalog_gaps` is a direct-coverage signal, not a proof that no prerequisite path exists. `caveats` in the response state those limitations.
+
+Roadmap calendar ordering uses an explicit conservative serial-effort estimate of ceil(duration_hours * 7 / weekly_budget) calendar days per activity before the next step; session dates remain original catalog dates. This is a planning estimate, not proof of actual course delivery duration. Missing weekly budget leaves calendar duration unknown. Milestone availability uses the same current eligibility and positive capped gains as recommendations.

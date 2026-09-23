@@ -58,7 +58,8 @@ export function validateImport(dataset: Dataset, input: unknown): ImportResult {
     if (!isObject(raw)) { add(row, 'employee', 'Expected object'); return; }
     const start = errors.length;
     for (const field of ['employee_id', 'full_name', 'department', 'role', 'grade', 'hire_date', 'work_format', 'preferred_language', 'last_review_date'])
-      if (!str(raw[field])) add(row, field, 'Required non-empty string');
+      if (!str(raw[field]) || String(raw[field]).length > 300) add(row, field, 'Required non-empty string, at most 300 characters');
+    if (typeof raw.employee_id === 'string' && (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(raw.employee_id) || (Object.prototype.hasOwnProperty.call(Object.prototype,raw.employee_id) || raw.employee_id==='prototype'))) add(row, 'employee_id', 'Use a safe identifier of 1–80 letters, numbers, underscores or hyphens');
     if (typeof raw.employee_id === 'string') {
       if (employeeIds.has(raw.employee_id)) add(row, 'employee_id', 'Duplicate ID in import');
       employeeIds.add(raw.employee_id);
@@ -102,7 +103,8 @@ export function validateImport(dataset: Dataset, input: unknown): ImportResult {
     const row = i + 1;
     if (!isObject(raw)) { add(row, 'history', 'Expected object'); return; }
     const start = errors.length;
-    for (const field of ['record_id', 'employee_id', 'event_id', 'date', 'status', 'assigned_by']) if (!str(raw[field])) add(row, field, 'Required non-empty string');
+    for (const field of ['record_id', 'employee_id', 'event_id', 'date', 'status', 'assigned_by']) if (!str(raw[field]) || String(raw[field]).length > 300) add(row, field, 'Required non-empty string, at most 300 characters');
+    if (typeof raw.record_id === 'string' && !/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/.test(raw.record_id)) add(row, 'record_id', 'Use a safe identifier of 1–100 characters');
     if (typeof raw.record_id === 'string') {
       if (recordIds.has(raw.record_id)) add(row, 'record_id', 'Duplicate ID in import');
       recordIds.add(raw.record_id);

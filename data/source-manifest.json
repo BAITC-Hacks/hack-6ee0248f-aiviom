@@ -1,0 +1,34 @@
+{
+  "archive_sha256": "e7a6ee9c2746bf946df32587debf757a59ad572c70acb45ce5842e9a12f01eb6",
+  "snapshot": "2026-10-01",
+  "files": [
+    {
+      "path": "data/source/README.kz.md",
+      "sha256": "8fac05c63cbe65089f406c19b22213e063f2f8daf63401bb4c3e8c058166d6f0"
+    },
+    {
+      "path": "data/source/README.md",
+      "sha256": "cd4a190009c6bb40c8f339b48da251af63adb2a50329b3ec77e8711315d8d96f"
+    },
+    {
+      "path": "data/source/README.ru.md",
+      "sha256": "4baffc7b705d9b0801415ea5e2a6199174fbf59868fce3d3634786938e53657c"
+    },
+    {
+      "path": "data/source/activity_history.csv",
+      "sha256": "daaec3190b7d3d37f6a820a4c2926fd3a94a4e7dc22ea8f00b350a008d11993b"
+    },
+    {
+      "path": "data/source/employees.json",
+      "sha256": "bcf366fc3cecde04401200e7ea192ae5b008fa5de8b13b246ef98b1ba65945de"
+    },
+    {
+      "path": "data/source/events.json",
+      "sha256": "e82f08dfd947b0f4bfda2d984d7e2adcdb1e2b96f239223cf4ad14dd05c1b14b"
+    },
+    {
+      "path": "data/source/skills.json",
+      "sha256": "12d99e52b5ed7e95d9d817380b774145e53d65a2b6c961f3c57e9f09a021edee"
+    }
+  ]
+}

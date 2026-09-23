@@ -153,3 +153,18 @@ test('analytics denominators and exact on-time exclude proxy completions', () =>
   assert.equal(a.skill_gaps.find(g => g.skill_id === 'B')?.frequency_pct, 100);
   assert.equal(a.no_voluntary_completion_90d.count, 0);
 });
+
+test('roadmap does not schedule dependent session before preparation effort can finish', () => {
+  const d=fixture();
+  d.events[0].duration_hours=8;
+  d.events[1].format='online';d.events[1].upcoming_sessions=['2026-10-02','2026-10-20'];
+  const road=buildRoadmap(d,buildProfile(d,'E1'),4);
+  assert.equal(road.steps.find(s=>s.event_id==='GOAL'&&s.status==='planned')?.session,'2026-10-20');
+});
+
+test('milestone availability excludes completed courses and cap below current skill',()=>{
+ const d=fixture();d.events=[event('OLD',[{skill_id:'A',gain:1,max_level:1}])];
+ const road=buildRoadmap(d,buildProfile(d,'E1'),4);
+ assert.equal(road.milestones.find(m=>m.skill_id==='A')?.status,'blocked');
+ assert.deepEqual(road.milestones.find(m=>m.skill_id==='A')?.event_ids,[]);
+});

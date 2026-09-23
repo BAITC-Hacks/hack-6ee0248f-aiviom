@@ -45,6 +45,9 @@ export function buildAnalytics(dataset: Dataset, profiles: Profile[], asOf: stri
     employees: profiles.filter(p => p.candidates.some(c => c.event.event_id === e.event_id && c.eligible && (c.U > 0 || c.B > 0))).length }))
     .filter(e => e.employees > 0).sort((a, b) => b.employees - a.employees || a.event_id.localeCompare(b.event_id));
   return {
+    no_next_employees: profiles.filter(p => p.no_next_reason && !['goal_skills_met','goal_missing'].includes(p.no_next_reason)).map(p => ({employee_id:p.employee.employee_id,full_name:p.employee.full_name,reason:p.no_next_reason})),
+    mandatory_open: histories.filter(h=>eventMap.get(h.event_id)?.mandatory&&h.status!=='completed').map(h=>({employee_id:h.employee_id,event_id:h.event_id,title:eventMap.get(h.event_id)!.title,due_date:h.due_date,status:h.status})),
+    participation: dataset.events.map(e=>{const rows=histories.filter(h=>h.event_id===e.event_id);const by_status:Record<string,number>={};for(const h of rows)by_status[h.status]=(by_status[h.status]??0)+1;return{event_id:e.event_id,title:e.title,total:rows.length,completed:by_status.completed??0,by_status};}),
     as_of: asOf, scope: { profiles: profiles.length, history_records: histories.length }, skill_gaps,
     critical_gaps: { employees: profiles.filter(p => p.gaps.some(g => g.critical && g.gap > 0)).length },
     completions: { total: histories.length, completed, rate_pct: pct(completed, histories.length), by_status },
