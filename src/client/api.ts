@@ -21,6 +21,7 @@ export interface ExtendedProfile extends Profile {
 
 export interface Catalog { events: Event[]; skills: Skill[]; role_profiles: RoleProfile[] }
 export interface Rewards { balance: number; earned: number; items: { id: string; title: string; cost: number; description: string }[]; ledger: Record<string, unknown>[] }
+export interface ExternalResults { mode: 'live_search'|'unavailable'; opportunities: { title:string; url:string; excerpt:string; checked_at:string; cost:'unknown'; duration:'unknown'; company_approved:false; skill_gain:null }[]; warning:string }
 export type { Candidate, Employee, Event, Quest, RecommendationResult, Roadmap };
 
 function errorMessage(value: unknown, status: number): string {
@@ -73,4 +74,5 @@ export const endpoint = {
   rewards: () => api<Rewards>('/api/rewards'),
   redeem: (id: string) => api<unknown>(`/api/rewards/${encodeURIComponent(id)}/redeem`, 'POST', { idempotency_key: crypto.randomUUID() }),
   audit: () => api<{ events: Record<string, unknown>[] }>('/api/audit'),
+  externalSearch: (skill_id:string,desired_level:number,language:'ru'|'kk'|'en',format?:'online'|'offline'|'self_paced') => api<ExternalResults>('/api/external/search','POST',{skill_id,desired_level,language,format}),
 };
