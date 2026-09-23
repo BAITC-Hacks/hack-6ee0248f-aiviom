@@ -104,6 +104,9 @@ function App() {
   const [switching, setSwitching] = useState(false);
   const [asOf, setAsOf] = useState("");
   const [revision, setRevision] = useState(0);
+  const [inspectionEmployeeId, setInspectionEmployeeId] = useState<
+    string | null
+  >(null);
   const [questDraft, setQuestDraft] = useState<{
     title: string;
     description: string;
@@ -313,10 +316,23 @@ function App() {
               revision={revision}
               action={action}
               onSwitch={changeIdentity}
+              inspectionEmployeeId={inspectionEmployeeId}
             />
           )}
           {tab === "insights" && (
-            <Insights revision={revision} action={action} />
+            <Insights
+              revision={revision}
+              action={action}
+              onInspect={(employeeId) => {
+                setInspectionEmployeeId(employeeId);
+                navigate("people");
+              }}
+              onImported={(employeeId) => {
+                sessionLoad.refresh();
+                if (employeeId) setInspectionEmployeeId(employeeId);
+                navigate("people");
+              }}
+            />
           )}
           {tab === "catalog" && <CatalogView />}
           {tab === "external" && (
