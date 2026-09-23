@@ -32,7 +32,7 @@ The seven additional skills informed the same acceptance pass: typography (local
 
 Final bounded independent review: **PASS** on application `6293c60`. The tablet detail uses full width, mobile text is readable, control borders exceed 3:1, and the 320px demo-role popup keeps its last option reachable with scrolling and End/Enter. Browser console warnings/errors were empty. A final clean-clone repeat on this exact application SHA passed all 57 tests, typecheck, build and source verification.
 
-Production activation is pending the separate post-hackathon rollout. The submission tag remains unchanged; production HTTPS and backward-compatible gateway smoke will be repeated at activation. See DEPLOY.md.
+Production activation was authorized immediately by the owner at 11:18 UTC on 2026-09-23, superseding the planned post-hackathon time. The submission tag remains unchanged; production HTTPS and backward-compatible gateway smoke will be repeated at activation. See DEPLOY.md.
 
 ## Font provenance
 
