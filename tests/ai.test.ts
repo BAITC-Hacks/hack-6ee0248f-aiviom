@@ -23,19 +23,19 @@ function profile(): Profile {
 }
 
 function modelChoice(facts: RecommendationFacts, id = 'other') {
-  return { recommendations: [{ event_id: id, reason: 'The skill gap is critical for the target; this is eligible at the current grade, with no past history.', factor_keys: ['grade', 'skill_gap', 'history', 'target_requirements'], evidence_ids: ['grade:current', 'gap:s1', 'history:summary', 'target:current', `event:${id}`], alternative_event_id: id === 'other' ? 'top' : 'other', alternative_reason: 'The other activity has higher heuristic priority, but the selected sequence is useful.' }], warnings: [] };
+  return { recommendations: [{ event_id: id, priority_code: 'critical_target', factor_keys: ['grade', 'skill_gap', 'history', 'target_requirements'], evidence_ids: ['grade:current', 'gap:s1', `history:relevant:${id}`, 'target:current', `event:${id}`], alternative_event_id: id === 'other' ? 'top' : 'other' }], warnings: [] };
 }
 
 test('model can choose a real lower-priority activity, with validated facts', async () => {
   let calls = 0;
-  const provider: RecommendationProvider = { async choose(facts) { calls++; assert.equal(facts.role, 'Analyst'); assert.equal(JSON.stringify(facts).includes('Private Person'), false); return { output: { ...modelChoice(facts), warnings: ['history:similar:other internal reference'] }, usage: { input_tokens: 100, output_tokens: 50 } }; } };
+  const provider: RecommendationProvider = { async choose(facts) { calls++; assert.equal(facts.role, 'Analyst'); assert.equal(JSON.stringify(facts).includes('Private Person'), false); return { output: modelChoice(facts), usage: { input_tokens: 100, output_tokens: 50 } }; } };
   const recommend = createRecommender(provider);
   const result = await recommend(profile(), { apiKey: 'test' });
   assert.equal(result.mode, 'live_ai');
   assert.deepEqual(result.recommendations.map(r => r.event_id), ['other']);
   assert.equal(result.recommendations[0].factor_keys.length, 4);
-  assert.match(result.recommendations[0].summary!, /The skill gap is critical/);
-  assert.match(result.recommendations[0].alternative_reason, /selected sequence is useful/);
+  assert.match(result.recommendations[0].summary!, /критический навык/);
+  assert.match(result.recommendations[0].alternative_reason, /вклад в цель/);
   assert.match(result.recommendations[0].reason, /Грейд: Начальный/);
   assert.match(result.recommendations[0].reason, /Цель: Analyst \/ Средний/);
   assert.match(result.recommendations[0].reason, /Analysis 1→3 \(2\)/);
@@ -69,17 +69,80 @@ test('candidate-specific 180-day history signal survives compact history truncat
   p.candidates[0].H = 0.2;
   for (let i = 0; i < 20; i++) p.history.push({ record_id: `record-${i}`, employee_id: 'emp-1', event_id: `past-${i}`, date: `2026-09-${String(i + 1).padStart(2, '0')}`, due_date: null, status: i % 2 ? 'no_show' : 'completed', completion_pct: 0, score: null, feedback_rating: null, assigned_by: 'self' });
   const facts = buildRecommendationFacts(p);
-  assert.equal(facts.history.length, 12);
   assert.equal(facts.history_count, 20);
   assert.equal(facts.candidates.find(c => c.id === 'top')?.history_index, 0.2);
   assert.match(facts.history_index_basis, /same type and format, last 180 days/);
-  assert.deepEqual(facts.fact_ids.find(f => f.id === 'history:similar:top'), { id: 'history:similar:top', factor: 'history' });
+  assert.deepEqual(facts.fact_ids.find(f => f.id === 'history:relevant:top'), { id: 'history:relevant:top', factor: 'history' });
   const rec = createRecommender({ async choose(input) {
     const output = modelChoice(input, 'top');
-    output.recommendations[0].evidence_ids = ['grade:current', 'gap:s1', 'history:similar:top', 'target:current', 'event:top'];
+    output.recommendations[0].evidence_ids = ['grade:current', 'gap:s1', 'history:relevant:top', 'target:current', 'event:top'];
     return { output };
   } });
   assert.equal((await rec(p, { apiKey: 'test' })).mode, 'live_ai');
+});
+
+test('conflict profile A: target-critical System Design outranks weaker speaking with negative participation history', async () => {
+  const p = profile();
+  p.gaps = [
+    { skill_id: 'speaking', name: 'Public Speaking', current: 1, required: 4, gap: 3, critical: false },
+    { skill_id: 'design', name: 'System Design', current: 2, required: 4, gap: 2, critical: true },
+  ];
+  const speaking = event('speaking-workshop');
+  speaking.develops_skills = [{ skill_id: 'speaking', gain: 1, max_level: 5 }];
+  const design = event('design-lab');
+  design.develops_skills = [{ skill_id: 'design', gain: 1, max_level: 5 }];
+  p.candidates = [
+    { ...candidate('speaking-workshop', 90), event: speaking, deltas: { speaking: 1 }, K: 0 },
+    { ...candidate('design-lab', 70), event: design, deltas: { design: 1 }, K: 1 },
+  ];
+  const catalog = [speaking, design];
+  for (let i = 0; i < 18; i++) p.history.push({ record_id: `other-${i}`, employee_id: 'emp-1', event_id: 'unrelated', date: `2026-09-${String(i + 1).padStart(2, '0')}`, due_date: null, status: 'completed', completion_pct: 100, score: null, feedback_rating: null, assigned_by: 'self' });
+  for (const [i, status] of ['declined', 'no_show', 'dropped'] .entries()) p.history.push({ record_id: `speaking-${i}`, employee_id: 'emp-1', event_id: 'prior-speaking', date: `2026-08-0${i + 1}`, due_date: null, status, completion_pct: 0, score: null, feedback_rating: null, assigned_by: 'self' });
+  catalog.push({ ...speaking, event_id: 'prior-speaking' }, { ...design, event_id: 'unrelated', develops_skills: [{ skill_id: 'unrelated', gain: 1, max_level: 5 }] });
+  const facts = buildRecommendationFacts(p, 'en', catalog);
+  assert.deepEqual(facts.candidates[0].relevant_history, { completed: 0, dropped: 1, no_show: 1, declined: 1, recent: { title: 'speaking-workshop', status: 'Stopped', date: '2026-08-03' }, same_type_format: { completed: 18, dropped: 1, no_show: 1, declined: 1 } });
+  const recommender = createRecommender({ async choose(input) {
+    assert.equal(input.candidates[1].critical_gain, 1);
+    return { output: { recommendations: [{ event_id: 'design-lab', priority_code: 'critical_target', factor_keys: ['grade', 'skill_gap', 'history', 'target_requirements'], evidence_ids: ['grade:current', 'gap:design', 'history:relevant:design-lab', 'target:current', 'event:design-lab'], alternative_event_id: 'speaking-workshop' }], warnings: [] } };
+  } });
+  const result = await recommender(p, { apiKey: 'test', locale: 'en', catalogEvents: catalog });
+  assert.equal(result.mode, 'live_ai');
+  assert.equal(result.recommendations[0].event_id, 'design-lab');
+  assert.match(result.recommendations[0].facts![2].value, /System Design 2→4/);
+});
+
+test('conflict profile B: completed, prerequisite-blocked and capped activities cannot be selected', async () => {
+  const p = profile();
+  p.candidates = [
+    { ...candidate('completed', 99), eligible: false },
+    { ...candidate('prerequisite-blocked', 98), eligible: false, reasons: ['prerequisite'] },
+    { ...candidate('capped', 97), deltas: { s1: 0 }, U: 0, K: 0, B: 0, event: { ...event('capped'), develops_skills: [{ skill_id: 's1', gain: 1, max_level: 1 }] } },
+    candidate('valid', 50),
+  ];
+  const facts = buildRecommendationFacts(p);
+  assert.deepEqual(facts.candidates.map(c => c.id), ['valid']);
+  const recommender = createRecommender({ async choose() { return { output: { recommendations: [{ event_id: 'capped', priority_code: 'target_gap', factor_keys: ['grade', 'skill_gap', 'history', 'target_requirements'], evidence_ids: ['grade:current', 'gap:s1', 'history:relevant:capped', 'target:current', 'event:capped'], alternative_event_id: null }], warnings: [] } }; } });
+  const result = await recommender(p, { apiKey: 'test' });
+  assert.equal(result.mode, 'rules_fallback');
+  assert.deepEqual(result.recommendations.map(r => r.event_id), ['valid']);
+});
+
+test('unsupported model text, numbers and priority claims fail closed', async () => {
+  for (const mutate of [
+    (choice: Record<string, unknown>, output: Record<string, unknown>) => { choice.reason = 'Guaranteed +5 levels'; },
+    (choice: Record<string, unknown>, output: Record<string, unknown>) => { choice.priority_code = 'prerequisite_unlock'; },
+    (choice: Record<string, unknown>, output: Record<string, unknown>) => { output.warnings = ['Guaranteed promotion']; },
+  ]) {
+    const recommender = createRecommender({ async choose(facts) {
+      const output = modelChoice(facts) as unknown as Record<string, unknown>;
+      mutate((output.recommendations as Record<string, unknown>[])[0], output);
+      return { output };
+    } });
+    const result = await recommender(profile(), { apiKey: 'test' });
+    assert.equal(result.mode, 'rules_fallback');
+    assert.deepEqual(result.warning_codes, ['AI_INVALID_OUTPUT']);
+    assert.equal(JSON.stringify(result).includes('Guaranteed'), false);
+  }
 });
 
 test('invalid IDs, missing factor evidence, and prompt injection fail closed', async () => {
@@ -199,10 +262,7 @@ test('RU, KK and EN get separate verified presentations and AI cache entries', a
   let calls = 0;
   const rec = createRecommender({ async choose(facts) {
     calls++;
-    const output = modelChoice(facts);
-    output.recommendations[0].reason = ({ ru: 'Этот шаг закрывает важный разрыв и готовит к цели.', kk: 'Бұл қадам маңызды алшақтықты азайтып, мақсатқа дайындайды.', en: 'This step closes a critical gap and prepares for the target.' } as const)[facts.locale as 'ru'|'kk'|'en'];
-    output.recommendations[0].alternative_reason = ({ ru: 'Альтернатива сильнее по численному приоритету.', kk: 'Баламаның сандық басымдығы жоғары.', en: 'The alternative has a higher numeric priority.' } as const)[facts.locale as 'ru'|'kk'|'en'];
-    return { output };
+    return { output: modelChoice(facts) };
   } });
   for (const locale of ['ru', 'kk', 'en'] as const) {
     const result = await rec(profile(), { apiKey: 'test', locale });
@@ -215,10 +275,10 @@ test('RU, KK and EN get separate verified presentations and AI cache entries', a
     assert.equal(choice.reason.includes(choice.summary!), true);
     assert.ok(choice.alternative_reason);
     if (locale === 'kk') {
-      assert.match(choice.summary!, /маңызды алшақтықты/);
+      assert.match(choice.summary!, /маңызды дағдысын/);
       assert.match(choice.facts![0].label, /Деңгей/);
     }
-    if (locale === 'en') assert.match(choice.summary!, /critical gap/);
+    if (locale === 'en') assert.match(choice.summary!, /critical target-level/);
     assert.equal((await rec(profile(), { apiKey: 'test', locale })).mode, 'cached_live_ai');
   }
   assert.equal(calls, 3);
@@ -239,26 +299,25 @@ test('offline and failed provider responses remain localized in all locales', as
   }
 });
 
-test('verified history and unlock counts use locale-aware forms', async () => {
+test('verified relevant history and unlock counts use locale-aware forms', async () => {
   for (const [count, historyWord, activityWord] of [
-    [1, '1 запись', '1 активность'],
-    [2, '2 записи', '2 активности'],
-    [5, '5 записей', '5 активностей'],
+    [1, 'завершено 1', '1 активность'],
+    [2, 'завершено 2', '2 активности'],
+    [5, 'завершено 5', '5 активностей'],
   ] as const) {
     const p = profile();
     p.candidates[0].B = count;
     for (let i = 0; i < count; i++) p.history.push({ record_id: `r${i}`, employee_id: 'emp-1', event_id: 'old', date: '2026-09-01', due_date: null, status: 'completed', completion_pct: 100, score: null, feedback_rating: null, assigned_by: 'self' });
-    const result = await createRecommender()(p, { locale: 'ru' });
+    const result = await createRecommender()(p, { locale: 'ru', catalogEvents: [event('old')] });
     assert.match(result.recommendations[0].facts![3].value, new RegExp(historyWord));
-    assert.match(result.recommendations[0].summary!, new RegExp(activityWord));
-    assert.match(result.recommendations[0].facts![3].value, /0,50/);
+    assert.match(result.recommendations[0].reason, new RegExp(activityWord));
   }
   const kk = profile();
   kk.candidates[0].B = 1;
   kk.history.push({ record_id: 'r1', employee_id: 'emp-1', event_id: 'old', date: '2026-09-01', due_date: null, status: 'completed', completion_pct: 100, score: null, feedback_rating: null, assigned_by: 'self' });
-  const kkResult = await createRecommender()(kk, { locale: 'kk' });
-  assert.match(kkResult.recommendations[0].facts![3].value, /1 жазба/);
-  assert.match(kkResult.recommendations[0].summary!, /1 іс-шараға/);
+  const kkResult = await createRecommender()(kk, { locale: 'kk', catalogEvents: [event('old')] });
+  assert.match(kkResult.recommendations[0].facts![3].value, /аяқталды 1/);
+  assert.match(kkResult.recommendations[0].reason, /1 іс-шара/);
 });
 
 test('judge gateway forwards locale without changing its strict request body', async () => {
