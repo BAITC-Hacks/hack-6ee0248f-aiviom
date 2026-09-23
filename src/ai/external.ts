@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 
+const SEARCH_MODEL = 'gpt-5.4-mini';
+
 export interface ExternalSearchInput {
   skill_id: string;
   skill_name: string;
@@ -76,8 +78,10 @@ export function createExternalSearch(provider: ExternalSearchProvider = sdkProvi
   return async function searchExternalOpportunities(input: ExternalSearchInput, options: { apiKey?: string; model?: string } = {}): Promise<ExternalSearchResult> {
     if (!options.apiKey?.trim()) return { mode: 'unavailable', opportunities: [], warning: 'Внешний поиск не настроен; можно предложить ссылку вручную.' };
     if (!input.skill_id || !input.skill_name || !Number.isInteger(input.desired_level) || input.desired_level < 0 || input.desired_level > 5) return { mode: 'unavailable', opportunities: [], warning: 'Нужны корректные метаданные навыка для поиска.' };
+    const model = options.model || process.env.OPENAI_MODEL || SEARCH_MODEL;
+    if (model !== SEARCH_MODEL) return { mode: 'unavailable', opportunities: [], warning: 'Модель внешнего поиска не разрешена.' };
     try {
-      const result = await provider.search(input, options.apiKey, options.model || process.env.OPENAI_MODEL || 'gpt-5.4-mini');
+      const result = await provider.search(input, options.apiKey, model);
       const trusted = new Set(result.sourceUrls.map(publicSourceUrl).filter((url): url is string => Boolean(url)));
       const raw = result.output as { opportunities?: unknown };
       if (!raw || !Array.isArray(raw.opportunities)) throw new Error('Invalid search output');
