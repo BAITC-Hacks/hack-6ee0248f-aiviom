@@ -1,5 +1,23 @@
 # Acceptance evidence
 
+## Final Must-have release — 2026-09-23
+
+Application `63a9aa2773507f8dd9a674f6e46d21203bf1cefc`. Final current `main` is the intended hackathon submission per owner instruction; previous tags remain historical checkpoints. Final documentation-inclusive artifact is tagged `must-have-2026-09-23`; resolve its SHA with Git and compare `/health`.
+
+- **70/70 tests PASS**, typecheck/build PASS, source manifest 7/7 PASS, npm audit 0 vulnerabilities, diff review and tracked/build secret scan PASS.
+- Independent new clone: `npm ci`, build/typecheck, 70 tests; no `.env`, personal key or captain cookies. Isolated offline acceptance PASS. Regression C really stops/restarts the process and verifies SQLite persistence.
+- P0 budget-only/same-goal PUT preserves baseline/items/version/progress. Same-review-day historical completion remains baseline; new trusted application confirmation counts once. Import cannot forge the trusted marker.
+- Synthetic profiles A/B/C cover critical goal versus weakest skill/negative history; completed/prerequisite/cap exclusion; arbitrary JSON+CSV import through confirmation/recalculation/duplicate/restart. These are internal regressions, not secret judge profiles.
+- Final production C: RU **2160ms**, KK **2249ms**, EN **2251ms**, each `live_ai`. EV_009 changed Cloud/CI-CD 2→3, coverage 60→64%, roadmap next EV_036→EV_008, XP +50; duplicate produced no second credit. Full preview/import/budget checks PASS.
+- Final production A: **2348ms**, `live_ai`, System Design critical steps EV_006/EV_007 selected ahead of weaker Public Speaking with three negative history rows.
+- Independent clean-client default production gateway: RU **4695ms**, KK **2549ms**, EN **2188ms**, `live_ai`, two unique eligible voluntary recommendations, four checked factors and real alternative, warnings empty. All are individual cold measurements, **not p95**.
+- An earlier live smoke rejected unsupported priority / invalid alternative, correctly showing fallback. Final fix uses candidate-scoped structured-output enums; strict factual validation remains. Final three-language smoke passed after this correction.
+- Built-in Browser: main employee→evidence→advisor confirmation→actual result; full skills/history/roadmap, HR employee-skill counts and drilldown. Widths 1440/768/390/320; RU/KK/EN; loading, empty queue, styled selectors, keyboard End/Enter, dialogs. Checked surfaces have no page overflow/console errors. HTTPS UI checked RU/KK/EN. Final UI corrections resolve receipt names from full catalog and explain source missing-skill=0 semantics.
+- Hosted five-role scope reads, employee HR denial, arbitrary/repeated import, SVG/fonts PASS. Ordinary HTTP samples: session1493ms, profile141ms, switch136ms, HR882ms; not p95.
+- Consistent SQLite backup + quick_check PASS; previous stable image preserved. Only Career Quest web updated. Current deployment SHA is authoritative at `/health`; manifest records application evidence and release tag.
+- Limitations: no physical device/Safari/screen-reader/native-Kazakh certification, no load-test/p95 claim; finite AI budget, demo auth and bounded roadmap remain explicit. Captain submits the organizer form.
+
+
 ## Atlas release checks, 2026-09-23
 
 - Preserved submission: `submission-2026-09-23` / `1c397c1f0c10652707e34d9d0f3d4776eda0e97b`. Atlas work is isolated on `release/atlas-rebrand`.

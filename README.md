@@ -6,6 +6,8 @@ HackAlem AI, **Case 1 Halyk Bank**. AI-навигатор развития: пр
 
 Приложение использует исходный синтетический набор организатора (200 сотрудников, 40 активностей, 60 навыков, 32 профиля роль/грейд, 2743 записи истории). Публичного рейтинга сотрудников нет. Соответствие навыкам не гарантирует повышения; XP не является грейдом.
 
+Проверенный application SHA: `63a9aa2773507f8dd9a674f6e46d21203bf1cefc`. Финальный artifact: тег `must-have-2026-09-23` (`git rev-parse must-have-2026-09-23`); точный SHA работающего контейнера возвращает `/health`. Документационный release commit содержит тот же код приложения.
+
 ## Judge quick start
 
 Нужны Git, интернет для установки зависимостей и **Node.js 20.19+ или 22 LTS**. SQLite встроен; отдельный сервер БД не нужен. На платформах без готового binary `better-sqlite3` могут понадобиться Python3, make и C++ compiler.
@@ -82,6 +84,7 @@ npm run verify:source
 npm audit
 npm run smoke:judge -- --all-locales
 npm run smoke:acceptance -- --base http://127.0.0.1:3000 --live --all-locales
+npx tsx scripts/conflict-smoke.ts --base http://127.0.0.1:3000
 ```
 
 `npm test` и `npm run verify:source` не вызывают платный API. `npx tsx scripts/live-smoke.ts` — отдельный платный smoke только при заданном серверном ключе. Проверки покрывают review cutoff/proxy, caps, EV_036, prerequisites, preview, import, RBAC, изоляцию, идемпотентность и AI output. Внутренние regression profiles A/B/C — синтетические тестовые случаи, а не секретные профили жюри: A проверяет конфликт слабейшего навыка с critical target и отрицательной историей; B — completed/prerequisite/cap; C — JSON+CSV, новое подтверждение в день review, пересчёт, идемпотентность, бюджет плана и реальный перезапуск процесса. Live smoke создаёт новые профили; остальные тесты используют изолированные БД и mocked/offline AI. Результаты относятся к точному application SHA. Карта/статус: [ACCEPTANCE](docs/ACCEPTANCE.md).

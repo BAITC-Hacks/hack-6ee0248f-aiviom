@@ -1,80 +1,156 @@
 {
-  "document_type": "verified_atlas_release_evidence",
+  "document_type": "verified_final_hackalem_release",
   "project": "Career Quest",
   "team": "AIVIOM",
   "repository": "https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom",
   "branch": "main",
-  "tested_application_commit": "6293c601fa73d20bcd663d8b02ba8bff6b56381c",
+  "tested_application_commit": "63a9aa2773507f8dd9a674f6e46d21203bf1cefc",
+  "release_ref": "must-have-2026-09-23",
+  "release_sha_resolution": "git rev-parse must-have-2026-09-23; documentation-only release commit preserves the tested application tree; runtime SHA is /health.version",
   "submission": {
-    "tag": "submission-2026-09-23",
-    "sha": "1c397c1f0c10652707e34d9d0f3d4776eda0e97b",
-    "organizer_form": "captain submits; not submitted by agent"
+    "current_submission": "Final main including Atlas and Must-have, per owner request",
+    "preserved_tags": [
+      "submission-2026-09-23",
+      "atlas-2026-09-23"
+    ],
+    "organizer_form": "Captain submits; not submitted by agent"
   },
   "verification": {
-    "unit_integration": "57/57 PASS exact application commit",
+    "tests": "70/70 PASS",
     "typecheck": "PASS",
     "build": "PASS",
     "source_integrity": "7 immutable files PASS",
+    "npm_audit": "0 vulnerabilities",
+    "secret_scan": "No high-confidence matches in tracked files/build; private specification, .env, token.txt, DB and logs are not tracked",
     "clean_clone": {
-      "sha": "6293c601fa73d20bcd663d8b02ba8bff6b56381c",
-      "checks": "57/57, typecheck, build, source PASS",
-      "prior_functional": "isolated five-role import/completion/restart PASS without personal key"
+      "path": "Independent new clone, no .env or personal credentials",
+      "sha": "63a9aa2773507f8dd9a674f6e46d21203bf1cefc",
+      "install": "npm ci PASS",
+      "tests": "70/70",
+      "typecheck": "PASS",
+      "build": "PASS",
+      "offline_acceptance": "PASS",
+      "restart_persistence": "PASS real child-process restart regression C"
     },
-    "browser": "57 accessible role/locale/page combinations desktop and mobile; targeted workflows and selector keyboard checks",
-    "live_ai": {
-      "model": "gpt-5.4-mini",
+    "live_gateway_without_local_key": {
       "mode": "live_ai",
-      "prompt_version": "2.2",
-      "new_profile": true,
-      "ru_ms": 2637,
-      "kk_ms": 2645,
-      "en_ms": 2743,
-      "four_factors_validated": true,
-      "latency_scope": "one request each, not p95"
+      "ru_ms": 4695,
+      "kk_ms": 2549,
+      "en_ms": 2188,
+      "warnings": [],
+      "latency_scope": "one fresh-profile request per locale; not p95"
     },
-    "clean_client_candidate_gateway_ms": {
-      "ru": 3575,
-      "kk": 3354,
-      "en": 2835
+    "production_acceptance": {
+      "profile_id": "REG_C_3a70b4439634",
+      "workspace_id": "31d59137-0840-496a-b0dc-2820e96b1b54",
+      "import": "PASS",
+      "preview": "PASS",
+      "same_day_completion": "PASS",
+      "budget_preservation": "PASS",
+      "duplicate_credit": "PASS",
+      "restart": "not_requested",
+      "completion": {
+        "id": "c324729b-1a17-406d-8e22-a5da12e2f673",
+        "employee_id": "REG_C_3a70b4439634",
+        "event_id": "EV_009",
+        "quest_id": null,
+        "confirmed_at": "2026-09-23T12:26:12.530Z",
+        "skills": [
+          {
+            "skill_id": "SK_CLOUD",
+            "before": 2,
+            "after": 3,
+            "delta": 1
+          },
+          {
+            "skill_id": "SK_CICD",
+            "before": 2,
+            "after": 3,
+            "delta": 1
+          }
+        ],
+        "coverage_before": 60,
+        "coverage_after": 64,
+        "total_gap_before": 20,
+        "total_gap_after": 18,
+        "unlocked_event_ids": [],
+        "next_event_id_before": "EV_036",
+        "next_event_id_after": "EV_008",
+        "xp_delta": 50
+      },
+      "recommendations": [
+        {
+          "locale": "ru",
+          "mode": "live_ai",
+          "latency_ms": 2160,
+          "event_ids": [
+            "EV_005",
+            "EV_010"
+          ]
+        },
+        {
+          "locale": "kk",
+          "mode": "live_ai",
+          "latency_ms": 2249,
+          "event_ids": [
+            "EV_005",
+            "EV_010"
+          ]
+        },
+        {
+          "locale": "en",
+          "mode": "live_ai",
+          "latency_ms": 2251,
+          "event_ids": [
+            "EV_005",
+            "EV_010"
+          ]
+        }
+      ]
     },
-    "gateway_scope": "Production HTTPS gateway verified in all three locales and with unchanged submission client",
-    "dependency_audit": "0 vulnerabilities",
-    "secret_pattern_scan": "No high-confidence tracked matches; no private spec, DB or log tracked",
-    "reduced_motion": "PASS built-in browser emulation; transitions suppressed; reset",
-    "design_confirmation": "PASS fresh independent reviewer, final material fixes confirmed; no new material findings",
-    "production_live_ai_ms": {
-      "ru": 5847,
-      "kk": 2703,
-      "en": 2370
-    },
-    "old_submission_client": {
+    "production_conflict_profile_A": {
+      "profile_id": "REG_A_4581bbb6f104",
       "mode": "live_ai",
-      "latency_ms": 4747,
-      "local_key": false,
-      "accept_language_header": false
+      "latency_ms": 2348,
+      "event_ids": [
+        "EV_006",
+        "EV_007"
+      ],
+      "conflict": "PASS",
+      "critical_skill": "SK_SYSTEM_DESIGN",
+      "weaker_skill": "SK_PUBLIC_SPEAKING",
+      "negative_history_records": 3
     },
-    "hosted_smoke": "PASS HTTPS health, five roles, RBAC, import and repeated import, logo/font assets, RU/KK/EN UI, console clean"
+    "http_samples_ms": {
+      "session": 1493,
+      "profile": 141,
+      "role_switch": 136,
+      "hr_analytics": 882
+    },
+    "browser": "Built-in Codex Browser: employee/advisor evidence acceptance, actual skill/coverage/XP receipt, full history/skills/ordered roadmap, HR employee-skill drilldown; 1440/768/390/320 widths; RU/KK/EN; language keyboard End/Enter and dialogs; no page overflow or console errors on checked surfaces. HTTPS main flow rendered in all three languages.",
+    "production_roles_assets": "Five-role scoped reads, employee HR denial, new/repeated import, SVG and local font HTTP200 PASS",
+    "legacy_gateway_client": "Unchanged submission-tag client without key/header returned live_ai in 3708ms before final schema-only refinement; payload compatibility tests remain PASS",
+    "resolved_live_failure": "Initial smoke correctly rejected unsupported priority / invalid alternative. Candidate-scoped strict JSON schema now limits event, priority, evidence and alternative IDs; final fresh-profile RU/KK/EN smoke PASS."
   },
   "deployment": {
-    "status": "LIVE",
+    "status": "Verified application live; final documentation-inclusive artifact identified by release_ref and /health",
     "domain": "https://career.aiviom.ai",
     "ip": "34.165.120.4",
     "compose_project": "career-quest",
+    "service": "web",
     "port": "127.0.0.1:3500",
-    "previous_image": "career-quest:1c397c1f0c10652707e34d9d0f3d4776eda0e97b",
-    "scope": "Career Quest web only; preserve volume and previous image; no Caddy changes",
-    "owner_override_utc": "2026-09-23T11:18:00Z",
-    "first_verified_rollout_commit": "f68be3bbe4aa66cb1a9e822ace3bb03ecfc37da8",
-    "runtime_version_source": "https://career.aiviom.ai/health",
-    "backup": "/home/alex/career-quest/backups/pre-atlas-f68be3b-20260923T1120/career-quest.sqlite",
-    "backup_sha256": "1807af3e86ee6cca427e83a3e26896a0f3a963279746d9e0f1b0ca83ae46f2ca"
+    "persistent_volume": "career-quest_career_quest_data",
+    "previous_stable_image": "career-quest:909a80168eff6a5f1c501d2bf0ed0dd0bef6722e",
+    "backup": "/home/alex/career-quest/backups/pre-must-have-20260923T1210/career-quest.sqlite",
+    "backup_sha256": "3738f28f84414a40b5a329c9372854c02dae2bc6b1f28b685b33ec4cacb03747",
+    "backup_integrity": "SQLite backup API + quick_check PASS",
+    "scope": "Career Quest web only; existing volume preserved; no Caddy/DNS/foreign-container changes"
   },
   "limitations": [
-    "No physical phone, Safari or screen reader verification",
-    "Kazakh reviewed by agent, not certified by native speaker",
-    "Actual 200% browser zoom not verified",
-    "New external web search not re-run in this release; provider tests cover locale and source validation",
-    "Demo role switching, no corporate SSO; finite API budget and network dependence"
-  ],
-  "release_ref": "atlas-2026-09-23"
+    "No physical phone, Safari or screen reader verification; no native Kazakh reviewer",
+    "Demo identities rather than corporate SSO",
+    "Finite AI budget/network dependence; rejected/failed model output remains honest rules_fallback",
+    "Bounded roadmap search and historical self-paced completion-date proxy",
+    "Individual timings are not p95 or load testing"
+  ]
 }

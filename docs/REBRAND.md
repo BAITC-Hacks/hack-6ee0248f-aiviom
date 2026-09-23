@@ -1,6 +1,6 @@
 # Atlas rebranding release
 
-This is a separate release, not a retroactive hackathon submission. Preserved submission: tag `submission-2026-09-23`, SHA `1c397c1f0c10652707e34d9d0f3d4776eda0e97b`. Integrated into `main`; published release tag: `atlas-2026-09-23`.
+Historical Atlas design record. The owner subsequently designated current main, including Atlas and Must-have fixes, as the final hackathon submission; see RELEASE_MANIFEST.json. Preserved submission: tag `submission-2026-09-23`, SHA `1c397c1f0c10652707e34d9d0f3d4776eda0e97b`. Integrated into `main`; published release tag: `atlas-2026-09-23`.
 
 ## Direction decision
 

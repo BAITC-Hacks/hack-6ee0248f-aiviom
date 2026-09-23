@@ -1,3 +1,11 @@
+# Current final deployment
+
+Current final artifact: tag `must-have-2026-09-23`, exact runtime SHA at https://career.aiviom.ai/health. Tested application SHA and receipts: RELEASE_MANIFEST.json. The owner designates current main as the submission; older tags below are preserved historical checkpoints.
+
+Before this release a consistent SQLite backup passed quick_check: `/home/alex/career-quest/backups/pre-must-have-20260923T1210/career-quest.sqlite`, SHA256 `3738f28f84414a40b5a329c9372854c02dae2bc6b1f28b685b33ec4cacb03747`. Stable image `career-quest:909a80168eff6a5f1c501d2bf0ed0dd0bef6722e` remains available. Only project `career-quest`, service `web`, was rebuilt/recreated with its existing volume; no Caddy or foreign container changes. Roll back code by recreating only web from that prior release directory and RELEASE_SHA; preserve current DB rather than overwriting it.
+
+Below is the historical deployment log, not a command to repeat shared-proxy changes.
+
 # Isolated deployment
 Target authorized by captain: 34.165.120.4, Ubuntu22 x86_64. New directory /home/alex/career-quest, Compose project career-quest, 127.0.0.1:3500 -> app3000, volume career-quest_career_quest_data. No other project commands, cleanup or volume operations.
 Preflight 2026-09-23 09:10UTC: disk41GB available, RAM19Gi available; port3500 free. Common Caddy /home/alex/EDGE_PROXY/Caddyfile, edge-proxy-caddy2.9.1, admin off. Captain explicitly approved one restart after validate on Sep23.
