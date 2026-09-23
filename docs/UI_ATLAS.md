@@ -17,4 +17,4 @@ Desktop navigation uses the fixed sidebar. Tablet uses a menu. Phone navigation 
 
 The first interface pass selected composition B in [DESIGN.md](../DESIGN.md). The Must-have refinement keeps the same visual language and exposes the server's ordered roadmap and confirmed completion receipts. Release verification is recorded by the coordinator.
 
-The complete skill list is scrollable and puts critical unmet target requirements first. A dash marks skills without an assessment; it does not claim a zero level. Plan progress describes the share of the original gap closed for the current goal, following `docs/FORMULAS.md`.
+The complete skill list is scrollable and puts critical unmet target requirements first. A missing source skill is shown as level zero, matching the domain formula. Plan progress describes the share of the original gap closed for the current goal, following `docs/FORMULAS.md`.

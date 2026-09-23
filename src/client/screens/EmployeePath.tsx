@@ -159,6 +159,12 @@ export function EmployeePath({
     const event = byId.get(eventId);
     return event ? catalogText(event.event_id, "title", event.title) : eventId;
   };
+  const nextStep = (before: string | null, after: string | null) =>
+    before === after
+      ? before
+        ? t("path.nextStepUnchanged", { name: eventName(before) })
+        : t("path.noStep")
+      : `${before ? eventName(before) : "—"} → ${after ? eventName(after) : t("path.noStep")}`;
   const skillName = (skillId: string, fallback?: string) => {
     const skill = catalog?.skills.find((item) => item.skill_id === skillId);
     return catalogText(skillId, "title", fallback ?? skill?.name ?? skillId);
@@ -171,12 +177,12 @@ export function EmployeePath({
       item.grade === profile?.goal?.target_grade,
   );
   const skillPriority = (skillId: string) => {
-    const current = profile?.skills[skillId];
+    const current = profile?.skills[skillId] ?? 0;
     const required = targetProfile?.required_skills[skillId];
-    if (current != null && required != null && current < required)
+    if (required != null && current < required)
       return targetProfile?.critical_skills.includes(skillId) ? 0 : 1;
     if (required != null) return 2;
-    return current != null ? 3 : 4;
+    return profile?.skills[skillId] != null ? 3 : 4;
   };
   const allSkillIds = [
     ...new Set([
@@ -189,9 +195,6 @@ export function EmployeePath({
       skillPriority(left) - skillPriority(right) ||
       skillName(left).localeCompare(skillName(right), locale),
   );
-  const assessedSkillCount = allSkillIds.filter(
-    (skillId) => profile?.skills[skillId] != null,
-  ).length;
   const filteredHistory = [...(profile?.history ?? [])]
     .filter(
       (record) => historyStatus === "all" || record.status === historyStatus,
@@ -395,13 +398,10 @@ export function EmployeePath({
                 <div>
                   <strong>{t("path.roadmap")}</strong>
                   <p>
-                    {confirmedResult.next_event_id_before
-                      ? eventName(confirmedResult.next_event_id_before)
-                      : "—"}{" "}
-                    →{" "}
-                    {confirmedResult.next_event_id_after
-                      ? eventName(confirmedResult.next_event_id_after)
-                      : "—"}
+                    {nextStep(
+                      confirmedResult.next_event_id_before,
+                      confirmedResult.next_event_id_after,
+                    )}
                   </p>
                   {!!confirmedResult.unlocked_event_ids.length && (
                     <small>
@@ -758,8 +758,12 @@ export function EmployeePath({
                                   <small>{t("path.questAlternative")}</small>
                                   {linkedQuests.map((quest) => (
                                     <p key={quest.quest_id}>
-                                      {quest.title} ·{" "}
-                                      {enumText("status", quest.status)} ·{" "}
+                                      {catalogText(
+                                        quest.quest_id,
+                                        "title",
+                                        quest.title,
+                                      )}{" "}
+                                      · {enumText("status", quest.status)} ·{" "}
                                       {t("path.afterAcceptance")}
                                     </p>
                                   ))}
@@ -949,14 +953,10 @@ export function EmployeePath({
             <div className="side-stack">
               <Panel
                 title={t("path.allSkills")}
-                aside={
-                  <Tag>
-                    {fmt(assessedSkillCount)} / {fmt(allSkillIds.length)}
-                  </Tag>
-                }
+                aside={<Tag>{fmt(allSkillIds.length)}</Tag>}
               >
                 <p className="muted skill-matrix-note">
-                  {t("path.unassessedSkills")}
+                  {t("path.missingSkillZero")}
                 </p>
                 <div
                   className="skill-matrix-scroll"
@@ -975,7 +975,7 @@ export function EmployeePath({
                       <span role="columnheader">{t("path.required")}</span>
                     </div>
                     {allSkillIds.map((skillId) => {
-                      const current = profile.skills[skillId];
+                      const current = profile.skills[skillId] ?? 0;
                       const required = targetProfile?.required_skills[skillId];
                       const critical =
                         targetProfile?.critical_skills.includes(skillId);
@@ -991,16 +991,14 @@ export function EmployeePath({
                               <Tag tone="amber">{t("path.criticalTag")}</Tag>
                             )}
                           </span>
-                          <strong role="cell">
-                            {current == null ? "—" : fmt(current)}
-                          </strong>
+                          <strong role="cell">{fmt(current)}</strong>
                           <span role="cell">
                             {required == null ? (
                               "—"
                             ) : (
                               <>
                                 {fmt(required)}
-                                {current != null && required > current && (
+                                {required > current && (
                                   <small>
                                     {" "}
                                     {t("path.gapAmount", {
