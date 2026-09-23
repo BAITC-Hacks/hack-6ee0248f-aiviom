@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "dataset": "Career Quest",
+    "version": "1.0",
+    "as_of_date": "2026-10-01"
+  },
+  "employees": [
+    {
+      "employee_id": "DOC_EMPLOYEE_001",
+      "full_name": "Synthetic Documentation Example",
+      "department": "Backend Development",
+      "role": "Backend Engineer",
+      "grade": "Middle",
+      "manager_id": "E0050",
+      "hire_date": "2024-10-01",
+      "tenure_months": 24,
+      "work_format": "remote",
+      "preferred_language": "ru",
+      "career_goal": {
+        "target_role": "Backend Engineer",
+        "target_grade": "Senior"
+      },
+      "skills": {
+        "SK_PYTHON": 3,
+        "SK_SQL": 3,
+        "SK_API_DESIGN": 2,
+        "SK_SYSTEM_DESIGN": 2,
+        "SK_PUBLIC_SPEAKING": 1,
+        "SK_TEAMWORK": 3
+      },
+      "last_review_date": "2026-09-01"
+    }
+  ]
+}
