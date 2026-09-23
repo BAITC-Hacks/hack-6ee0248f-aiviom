@@ -1,143 +1,172 @@
-# 11. Установка, развёртывание и эксплуатация
+# Deployment guide
 
-> Статус: проектные материалы. Фактический запуск и результаты текущей реализации см. в [README](../README.md), [ACCEPTANCE](ACCEPTANCE.md), [FORMULAS](FORMULAS.md) и [DEMO_API](DEMO_API.md). Непроверенные положения ниже не являются заявлением о готовности.
+Public demo: **https://career.aiviom.ai**
 
-Основание: [S-FINAL §§15–16, 18, 21; S-RULES §§5.4.15–16, 5.6.4–6](SOURCES.md).
+This guide describes reproducible deployment from the current repository.
 
-> **Статус:** процедура предназначена для заполнения и проверки по фактическому коду. В приложенных материалах нет source tree приложения, manifest зависимостей, deployment-конфигурации и проверенного main command. Поэтому эта редакция не заявляет, что существующий репозиторий уже запускается одной командой. Независимая проверка блокируется незаполненными обязательными полями паспорта релиза.
+## 1. Prerequisites
 
-## 1. Контракт воспроизводимости
+Local Node deployment requires:
 
-Эксперт должен получить репозиторий и README, установить объявленные зависимости, выполнить один основной документированный маршрут запуска, получить заполненную demo-среду и проверить live AI на новом профиле без личной подписки/аккаунта команды.
+- Node.js >= 20.19 (Node 22 LTS recommended)
+- npm
+- Git
+- internet access during `npm ci`
 
-Не должно быть скрытых требований: untracked файлов капитана, его browser cookies, абсолютного пути к ключу на его ноутбуке, неопубликованного seed или устной подсказки о нужной ветке.
+SQLite is embedded through `better-sqlite3`; no separate DB server is required.
 
-Hosted demo дополняет, а не заменяет локальное воспроизведение исходников. Локальный fallback без ключа полезен для проверки расчётов, но не заменяет live AI acceptance.
+If a prebuilt `better-sqlite3` binary is unavailable on the host, native compilation may require Python 3, make and a C/C++ compiler.
 
-## 2. Паспорт релиза — единая точка фактов
-
-Заполнить [RELEASE_MANIFEST.json](RELEASE_MANIFEST.json). Это фактическая карточка релиза, не конфигурация приложения.
-
-| Обязательный факт | Что записать |
-|---|---|
-| Версия кода | Репозиторий, branch, полный tested commit SHA. |
-| Окружение | Поддержанные OS/архитектура, runtime и точные версии, DB, package manager, lockfile. |
-| Зависимости | Нужны ли Docker/Compose, internet, системные библиотеки; проверенные команды. |
-| Данные | Откуда эксперт получает разрешённый seed, выбранный checksum, mount/path, migrations/seed. |
-| Запуск | Точная install/start/stop/restart команда, рабочий каталог, local URL/port. |
-| Сохранение | DB/volume paths; что сохраняется после restart и что удаляет reset. |
-| Конфигурация | Реальные env names/defaults, обязательность, secret/non-secret. |
-| Demo identities | Как войти/переключиться, пять ролей и scope; не записывать private credentials в Git. |
-| Live AI | Provider/model, защищённый judge path, порядок доступа, срок, fallback. |
-| Проверки | Точные test commands, clean-room evidence, latency, release status. |
-
-Пустое поле нельзя трактовать как «параметр не нужен». Для действительно неприменимого параметра добавить объяснение в соответствующем примечании и проверить маршрут без него.
-
-## 3. Получение кода
-
-Доступ к официальному репозиторию должен быть предоставлен эксперту предусмотренным организатором способом. Не публиковать ограниченные материалы в новом зеркале ради обхода прав доступа.
-
-Из новой директории выполнить:
+## 2. Local production-style run
 
 ```bash
 git clone https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom.git
 cd hack-6ee0248f-aiviom
-git rev-parse HEAD
-git status --short
+npm ci
+npm run build
+npm start
 ```
 
-Эти команды получают исходники; они **не запускают** приложение. Сравнить HEAD с tested commit из паспорта. Для воспроизведения другой опубликованной версии использовать полный зафиксированный SHA:
+Default URL:
+
+```text
+http://127.0.0.1:3000
+```
+
+Health check:
 
 ```bash
-# Заменить placeholder полным SHA из заполненного паспорта релиза.
-git switch --detach <TESTED_COMMIT_SHA>
+curl http://127.0.0.1:3000/health
 ```
 
-Не вставлять токен в URL команды. При отказе в доступе использовать разрешённый способ аутентификации/обращение к организатору; ошибка доступа к GitHub не диагностирует работу приложения.
+## 3. Environment
 
-## 4. Проверка prerequisites
+A `.env` file is optional for the basic demo.
 
-Прочитать фактические package/build manifests и lockfile. Указать точные runtime/version requirements в паспорте. Framework и ORM в спецификации не выбраны, поэтому нельзя автоматически предположить наличие npm scripts, Poetry, pnpm, FastAPI или другого toolchain.
-
-Проверить наличие объявленных runtime/container tools, свободный указанный port, доступ к зависимостям и разрешённый источник seed. Минимальные CPU/RAM/storage тоже не измерены: указать протестированное окружение, а не выдуманные системные требования.
-
-Если установка требует скачивания пакетов, image или модели, сеть является prerequisite. Наличие offline fallback не делает первоначальную установку «без интернета».
-
-## 5. Конфигурация
-
-Релизный `.env.example` должен соответствовать реальному коду. Таблица ниже — **логические настройки**, не утверждение о текущих именах env variables.
-
-| Настройка | Ожидаемый смысл | Секрет |
-|---|---|---|
-| Application/demo mode | Включён ли изолированный demo workspace/identity switcher | Нет |
-| DB location | Фактический connection string либо path/volume | Зависит от конфигурации |
-| Seed path/version | Где лежит разрешённый архив и какой hash ожидается | Нет, но данные ограничены |
-| DATA_AS_OF | Исходная дата `2026-10-01` | Нет |
-| DEMO_AS_OF | Дата конкретной demo-сессии | Нет |
-| Provider/model | Действительный provider, model ID и endpoint | Обычно нет |
-| Provider credential | Только серверный секрет | Да |
-| Judge gateway | Проверенный доступ для эксперта без собственного provider account | Способ доступа может содержать секрет |
-| Limits | Rate, payload/token/tool budget, concurrency и общий расход | Обычно нет |
-| Session/auth | Применённые настройки server session | Часть значений секретна |
-| Port/base URL | Реальный адрес приложения | Нет |
-
-В документации указывать, что обязательное, что имеет default, где безопасно передаётся secret и что происходит при его отсутствии. Нельзя считать UI-название модели Codex готовым model ID продуктового API.
-
-## 6. Основной запуск
-
-В релизном README должна быть **одна фактическая проверенная команда**. Возможный целевой вариант из архитектурного предложения:
+To create one:
 
 ```bash
-# ПРОЕКТНЫЙ ПРИМЕР: допустим только при наличии и проверке compose-конфигурации.
-docker compose up --build
+cp .env.example .env
 ```
 
-Пока actual compose file, окружение и результат не проверены, этот пример не является инструкцией гарантированного запуска текущего репозитория. Не создавать документацию о несуществующем Dockerfile, script или port.
+Main values:
 
-Правильный основной маршрут должен автоматически создать schema, применить migrations и выполнить идемпотентный seed либо явно включать эти необходимые шаги. Startup должен сообщить понятную ошибку при отсутствии набора/ключа, а не молча заменить их выдуманными данными.
+```dotenv
+PORT=3000
+DATABASE_PATH=.runtime/career-quest.sqlite
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
+AI_BUDGET_USD=30
+DEMO_ENABLED=true
+JUDGE_GATEWAY_URL=https://career.aiviom.ai
+# AI_MODE=offline
+```
 
-## 7. Ожидаемый результат первого запуска
+`HOST`, `TRUST_PROXY`, `NODE_ENV` and `RELEASE_SHA` are also consumed in deployment/server configuration.
 
-Открывается local URL из паспорта. Доступны заполненные demo identities пяти ролей. Original seed имеет 200 employees, 40 events, 60 skills, 32 role profiles, 2743 historical rows; demo extensions считаются отдельно. Доменная дата видна и соответствует workspace.
+Do not commit `.env` or API credentials.
 
-Health не раскрывает секреты. Профиль открывается независимо от текущей доступности LLM; рекомендация имеет честный mode. Live path проверяется отдельным вызовом на новом импорте, а не только по зелёному health status.
+## 4. Docker Compose
 
-## 8. Live AI для независимого эксперта
+```bash
+cp .env.example .env
+docker compose build
+docker compose up -d
+```
 
-| Путь | Условия готовности |
-|---|---|
-| Team-managed backend/demo | Работает в период проверки, секрет server-side, deployment reproducible, доступ проверен вне аккаунта капитана. |
-| Ограниченный judge gateway для local clone | Реально развёрнут, scope/session проверены, quotas установлены, точный способ доступа описан. |
-| Иной согласованный demo access | Есть подтверждённый организатором способ; эксперт не зависит от личной подписки команды. |
+The supplied `compose.yml` publishes:
 
-Личный API key эксперта может быть дополнительным вариантом, но не единственным обязательным путём. `demo_fixture` или rules ответ на неизвестный профиль не засчитывается как live inference.
+```text
+127.0.0.1:3500 -> container:3000
+```
 
-Не включать общий безлимитный proxy. Документировать срок доступности, кому сообщить о сбое, что происходит при исчерпании quota/credits и какие функции остаются доступны. Сроки проверки, указанные S-FINAL (24–28 сентября и Demo Day 29 сентября 2026), являются планом источника, а не подтверждением текущей работоспособности сервиса.
+Health:
 
-## 9. Остановка, повторный запуск и reset
+```bash
+curl http://127.0.0.1:3500/health
+```
 
-Команды stop/restart должны быть указаны по факту deployment. Проверка persistence: выполнить разрешённое действие, остановить приложение, запустить снова, сравнить history/skills/credits/plan. Restart не должен повторно начислять seed rewards.
+Status/logs:
 
-Reset имеет отдельное подтверждение и действует только в разрешённом demo workspace. Остановка процесса не равна удалению DB volume. Не использовать общую команду удаления данных как штатный stop. Команда destructive reset и её последствия должны быть явно подписаны в финальном README.
+```bash
+docker compose ps
+docker compose logs -f web
+```
 
-Способ backup/restore для релизной DB в S-FINAL не задан. Если он реализован, документировать и проверить отдельно; не заявлять production-ready recovery по наличию SQLite-файла.
+## 5. Persistence
 
-## 10. Проверки после запуска
+Docker stores `.runtime` in the named volume `career_quest_data`.
 
-Пройти [руководство эксперта](13_REVIEWER_GUIDE.md). Выполнить actual test commands из паспорта. Зафиксировать commit, окружение, exit codes и evidence. Для live smoke — model ID, prompt version, mode, длительность и usage без секретов.
+Normal stop:
 
-## 11. Диагностика
+```bash
+docker compose down
+```
 
-| Симптом | Что проверить | Чего не делать |
-|---|---|---|
-| Нет доступа к repo | Account/repository permission и разрешённый канал организатора | Не переносить проект в новое публичное зеркало. |
-| Не найдена команда/manifest | Соответствие tested commit, prerequisite и README | Не угадывать scripts/framework. |
-| Seed не найден | Разрешённый source path, выбранный hash, mount | Не подменять данные произвольной выгрузкой. |
-| Hash не совпал | Manifest версии и отчёт различия | Не считать автоматически corruption или молча менять expected. |
-| Пустые role views | Seed и demo extensions, workspace/identity mapping | Не выдавать пустую страницу за законченный workflow. |
-| Нет gain после completion | Статус, review cutoff, cap, idempotency, timestamps | Не начислять вручную до понимания причины. |
-| AI недоступен | Server credential, gateway access, quota, timeout, actual mode | Не показывать fallback как live_ai. |
-| Старая рекомендация | Fact/history/goal/policy version и cache invalidation | Не скрывать проблему постоянной ручной очисткой. |
-| Данные исчезли после restart | Actual DB path и persistence volume | Не объявлять persistence пройденным по refresh браузера. |
+This preserves data.
 
-После устранения ошибки обновить README и повторить затронутые проверки. Успешная установка документации не является успешной установкой приложения.
+Destructive removal:
+
+```bash
+docker compose down -v
+```
+
+This removes the persistent volume and must only be used when a full reset is intended.
+
+For a local Node run, persistence is normally stored at:
+
+```text
+.runtime/career-quest.sqlite
+```
+
+## 6. Post-deployment verification
+
+Run:
+
+```bash
+curl http://127.0.0.1:3000/health
+# or, for Compose:
+curl http://127.0.0.1:3500/health
+```
+
+Then open the browser and follow [`13_REVIEWER_GUIDE.md`](13_REVIEWER_GUIDE.md).
+
+For source/build checks:
+
+```bash
+npm test
+npm run typecheck
+npm run build
+npm run verify:source
+```
+
+## 7. Live AI options
+
+The application remains usable without a personal API key.
+
+Possible paths:
+
+1. `OPENAI_API_KEY` configured on the server: direct live model call.
+2. No local key, but `JUDGE_GATEWAY_URL` enabled: restricted team gateway path.
+3. Remote AI unavailable or `AI_MODE=offline`: explicit rules fallback.
+
+The application reports the recommendation mode so a fallback is not represented as live AI.
+
+## 8. Reverse proxy / public deployment
+
+For an internet-facing deployment, run the Node container behind a TLS-terminating reverse proxy and forward traffic to the loopback-bound Compose port. Set proxy trust only for the actual deployment topology (`TRUST_PROXY=1` is used by the supplied Compose environment).
+
+The checked-in Compose file deliberately binds the published port to `127.0.0.1`, avoiding direct exposure of the Node process on all interfaces.
+
+## 9. Operational checks
+
+After deployment, verify:
+
+- `/health` responds;
+- the UI loads;
+- `/api/session` creates/returns a workspace session;
+- role switching works inside the demo workspace;
+- state-changing actions survive application restart;
+- demo reset resets only the current workspace;
+- API keys are server-side only;
+- `.env` and `.runtime` are not committed.

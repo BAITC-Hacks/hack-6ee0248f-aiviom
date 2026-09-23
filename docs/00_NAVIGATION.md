@@ -1,47 +1,41 @@
-# Карта документации и порядок работы
+# Documentation map
 
-> Статус: проектные материалы. Фактический запуск и результаты текущей реализации см. в [README](../README.md), [ACCEPTANCE](ACCEPTANCE.md), [FORMULAS](FORMULAS.md) и [DEMO_API](DEMO_API.md). Непроверенные положения ниже не являются заявлением о готовности.
+The primary entry point for reviewers is the repository [`README.md`](../README.md).
 
-Основание: [S-FINAL](SOURCES.md), §§3–4, 19–21.
+## Recommended order for technical review
 
-## Для проверяющего
+1. [`README.md`](../README.md) — required deployment link, purpose, architecture, stack, installation, environment, launch and verification scenario.
+2. [`TECHNICAL_DOCUMENTATION.md`](TECHNICAL_DOCUMENTATION.md) — implementation-grounded description of the current code.
+3. [`13_REVIEWER_GUIDE.md`](13_REVIEWER_GUIDE.md) — extended end-to-end reviewer workflow.
+4. [`DEMO_API.md`](DEMO_API.md) — API-level verification examples.
+5. [`11_DEPLOYMENT.md`](11_DEPLOYMENT.md) / [`DEPLOY.md`](DEPLOY.md) — deployment notes.
+6. [`ACCEPTANCE.md`](ACCEPTANCE.md) and [`RELEASE_MANIFEST.json`](RELEASE_MANIFEST.json) — release/acceptance evidence where applicable.
 
-Минимальный маршрут: [README](../README.md) → [паспорт релиза](RELEASE_MANIFEST.json) → [развёртывание](11_DEPLOYMENT.md) → [сквозные сценарии](13_REVIEWER_GUIDE.md) → [матрица приёмки](ACCEPTANCE.md).
+## Architecture and domain
 
-При споре о результате открыть соответствующую формулу в [расчётном модуле](04_DOMAIN_CALCULATIONS.md), правило допуска в [AI-рекомендациях](05_RECOMMENDATIONS_AND_AI.md) или определение показателя в [HR-аналитике](10_HR_AND_REWARDS.md). Название показателя в UI само по себе не задаёт его смысл.
+- [`02_ARCHITECTURE.md`](02_ARCHITECTURE.md)
+- [`03_DATA_AND_IMPORT.md`](03_DATA_AND_IMPORT.md)
+- [`04_DOMAIN_CALCULATIONS.md`](04_DOMAIN_CALCULATIONS.md)
+- [`05_RECOMMENDATIONS_AND_AI.md`](05_RECOMMENDATIONS_AND_AI.md)
+- [`06_ROADMAP_AND_SIDE_QUESTS.md`](06_ROADMAP_AND_SIDE_QUESTS.md)
+- [`07_ROLES_AND_SECURITY.md`](07_ROLES_AND_SECURITY.md)
+- [`08_API_AND_STORAGE.md`](08_API_AND_STORAGE.md)
 
-## Для разработчиков
+## UI, analytics, testing and release
 
-| Пакет | Что читать | Результат работы | Зависимости | Критерий готовности |
-|---|---|---|---|---|
-| W1 — данные | [Данные](03_DATA_AND_IMPORT.md), [API/хранение](08_API_AND_STORAGE.md) | Валидатор, импорт, baseline, изоляция fixtures/extensions | Общий data contract | T01, T03, T07; повторный импорт без дублей. |
-| W2 — domain | [Расчёты](04_DOMAIN_CALCULATIONS.md), [roadmap](06_ROADMAP_AND_SIDE_QUESTS.md) | Единые skills/gaps/eligibility/preview/roadmap | W1 | T05–T09, T12; UI и AI не считают отдельно. |
-| W3 — AI | [Рекомендации](05_RECOMMENDATIONS_AND_AI.md), [контракт](contracts/recommendation.schema.json) | Реальный выбор LLM, evidence validator, modes/cache | W2 | T04, T15, T16 и отдельный live smoke. |
-| W4 — роли и workflow | [Права](07_ROLES_AND_SECURITY.md), [side quests](06_ROADMAP_AND_SIDE_QUESTS.md) | Server-side scope, approvals, completion/credit/audit | W1–W2 | T10, T11, T13. |
-| W5 — интерфейс | [Экраны](09_INTERFACE.md), [руководство эксперта](13_REVIEWER_GUIDE.md) | Пять непустых role views, states, preview, import | Общие API types; затем W2–W4 | Сквозные сценарии работают, нет кнопок-пустышек. |
-| W6 — аналитика и награды | [HR/XP](10_HR_AND_REWARDS.md) | Проверяемые агрегаты и транзакционный ledger | W1, W4; решение конфликта XP | T14, T17. |
-| W7 — интеграция | [Deployment](11_DEPLOYMENT.md), [тесты](12_TESTING.md), [release](15_RELEASE_AND_LIMITATIONS.md) | Фактический README, чистый старт, judge access | Начинать параллельно W1, а не в конце | T18–T20 и заполненный паспорт релиза. |
+- [`09_INTERFACE.md`](09_INTERFACE.md)
+- [`10_HR_AND_REWARDS.md`](10_HR_AND_REWARDS.md)
+- [`12_TESTING.md`](12_TESTING.md)
+- [`14_JURY_FAQ.md`](14_JURY_FAQ.md)
+- [`15_RELEASE_AND_LIMITATIONS.md`](15_RELEASE_AND_LIMITATIONS.md)
 
-API types, DB schema, migrations и lockfile должны иметь одного ответственного владельца. Ветки/рабочие копии могут разрабатывать независимые части; рабочая БД каждого исполнителя отдельная.
+## Supporting references
 
-## Определение «готово» для пакета
+- [`AI.md`](AI.md)
+- [`FORMULAS.md`](FORMULAS.md)
+- [`SOURCES.md`](SOURCES.md)
+- [`DATASET_INSPECTION.md`](DATASET_INSPECTION.md)
+- [`GLOSSARY.md`](GLOSSARY.md)
+- [`THIRD_PARTY.md`](THIRD_PARTY.md)
 
-Готовность включает реализацию в официальном репозитории, проверку интеграции, выполненные тесты, commit SHA, перечисление ограничений и обновление документации. Скриншот не заменяет тест, описание агента не заменяет его изменения в Git.
-
-Минимальная запись передачи:
-
-```text
-Пакет:
-Ветка / commit:
-Изменённые файлы:
-Выполненные команды и exit codes:
-Результат сценария:
-Непроверенное:
-Оставшийся блокер:
-```
-
-## Как читать приоритеты
-
-P0 — нельзя заменить декоративными надстройками. P1 — согласованные отличия, а не требование написать пять отдельных приложений. P2 — углубление: дополнительные источники учебных возможностей, фильтры, полная локализация, богатый каталог наград.
-
-Если функция P1/P2 не завершена, её фактический статус должен быть виден в README. Не оставлять активный UI, который лишь изображает действие. Существенное сокращение согласованного объёма фиксируется командой явно.
+When older planning documents and the current implementation differ, use the current code, `README.md`, and `TECHNICAL_DOCUMENTATION.md` as the authoritative description of what is actually implemented.
