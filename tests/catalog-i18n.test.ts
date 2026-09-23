@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSourceDataset } from '../src/domain/source.js';
+import { seed } from '../src/server/store.js';
 import { catalogText, enumText } from '../src/shared/catalog-i18n.js';
 import { enEvents, enSkills } from '../src/shared/catalog-translations/en.js';
 import { ruEvents, ruSkills } from '../src/shared/catalog-translations/ru.js';
@@ -70,6 +71,9 @@ test('seed reward and demo copy is translated only while unchanged', () => {
     assert.ok(entry);
     for (const locale of locales) assert.equal(catalogText(locale, 'demo', id, entry.source, field as 'title'), entry.text[locale]);
   }
+  const seededEvidence = seed().quests.find(q => q.id === 'DEMO_Q_EVIDENCE')?.evidence;
+  assert.equal(seededEvidence, demo.DEMO_Q_EVIDENCE.evidence?.source);
+  assert.equal(catalogText('kk', 'demo', 'DEMO_Q_EVIDENCE', seededEvidence!, 'evidence'), demo.DEMO_Q_EVIDENCE.evidence?.text.kk);
 });
 
 test('unknown and edited/imported content remains original', () => {
@@ -77,6 +81,7 @@ test('unknown and edited/imported content remains original', () => {
   assert.equal(catalogText('ru', 'event', 'EV_001', 'Edited title'), 'Edited title');
   assert.equal(catalogText('kk', 'skill', 'SK_SQL', 'Custom SQL description', 'description'), 'Custom SQL description');
   assert.equal(catalogText('en', 'demo', 'DEMO_Q_REVIEW', 'Edited user project'), 'Edited user project');
+  assert.equal(catalogText('kk', 'demo', 'DEMO_Q_EVIDENCE', 'Edited user evidence', 'evidence'), 'Edited user evidence');
   assert.equal(catalogText('en', 'role', 'Backend Engineer', 'Custom role name'), 'Custom role name');
   assert.equal(enumText('ru', 'status', 'new_status'), 'new_status');
 });
