@@ -1258,9 +1258,10 @@ const extraRu = {
   "demo.explanation":
     "Дата меняет только расчёт в демо. Исходная история сохраняется.",
   "demo.resetQuestion": "Сбросить изменения в демо-пространстве?",
+  "path.nextStepUnchanged": "Следующий шаг не изменился: {name}.",
   "path.actualSkills": "Фактическое изменение навыков",
-  "path.unassessedSkills":
-    "— означает, что навык ещё не оценён; это не нулевой уровень.",
+  "path.missingSkillZero":
+    "Если навык отсутствует в исходном профиле, его уровень по схеме равен 0.",
   "path.allSkills": "Все навыки",
   "path.currentLevel": "Сейчас",
   "path.required": "Цель",
@@ -1534,9 +1535,10 @@ const extraKk: ExtraDictionary = {
   "demo.explanation":
     "Күн тек демодағы есепке әсер етеді. Бастапқы тарих сақталады.",
   "demo.resetQuestion": "Демо кеңістіктегі өзгерістерді қалпына келтіресіз бе?",
+  "path.nextStepUnchanged": "Келесі қадам өзгерген жоқ: {name}.",
   "path.actualSkills": "Дағдылардың нақты өзгерісі",
-  "path.unassessedSkills":
-    "— дағды әлі бағаланбағанын білдіреді; бұл нөлдік деңгей емес.",
+  "path.missingSkillZero":
+    "Бастапқы бейінде дағды көрсетілмесе, схема бойынша оның деңгейі 0 болады.",
   "path.allSkills": "Барлық дағдылар",
   "path.currentLevel": "Қазір",
   "path.required": "Мақсат",
@@ -1810,9 +1812,10 @@ const extraEn: ExtraDictionary = {
   "demo.explanation":
     "The date changes demo calculations only. Source history is preserved.",
   "demo.resetQuestion": "Reset changes in this demo workspace?",
+  "path.nextStepUnchanged": "Next step unchanged: {name}.",
   "path.actualSkills": "Actual skill change",
-  "path.unassessedSkills":
-    "— means the skill has not been assessed; it is not a zero level.",
+  "path.missingSkillZero":
+    "A skill absent from the source profile has level 0 under the dataset rules.",
   "path.allSkills": "All skills",
   "path.currentLevel": "Current",
   "path.required": "Target",

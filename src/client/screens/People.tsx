@@ -10,6 +10,7 @@ import {
   Panel,
   Status,
   Submit,
+  formatDate,
   formatNum,
   type Action,
   useLoad,
@@ -99,6 +100,25 @@ export function People({
   );
   const visible = filtered.slice(0, visibleCount);
   const events = catalogLoad.data?.events ?? [];
+  const eventName = (eventId: string) =>
+    catalogText(
+      eventId,
+      "title",
+      events.find((event) => event.event_id === eventId)?.title ?? eventId,
+    );
+  const skillName = (skillId: string) =>
+    catalogText(
+      skillId,
+      "title",
+      catalogLoad.data?.skills.find((skill) => skill.skill_id === skillId)
+        ?.name ?? skillId,
+    );
+  const nextStep = (before: string | null, after: string | null) =>
+    before === after
+      ? before
+        ? t("path.nextStepUnchanged", { name: eventName(before) })
+        : t("path.noStep")
+      : `${before ? eventName(before) : "—"} → ${after ? eventName(after) : t("path.noStep")}`;
   const num = (value: number | null | undefined) => formatNum(locale, value);
   const targetProfile = catalogLoad.data?.role_profiles.find(
     (item) =>
@@ -106,12 +126,12 @@ export function People({
       item.grade === profileLoad.data?.goal?.target_grade,
   );
   const skillPriority = (skillId: string) => {
-    const current = profileLoad.data?.skills[skillId];
+    const current = profileLoad.data?.skills[skillId] ?? 0;
     const required = targetProfile?.required_skills[skillId];
-    if (current != null && required != null && current < required)
+    if (required != null && current < required)
       return targetProfile?.critical_skills.includes(skillId) ? 0 : 1;
     if (required != null) return 2;
-    return current != null ? 3 : 4;
+    return profileLoad.data?.skills[skillId] != null ? 3 : 4;
   };
   const allSkillIds = [
     ...new Set([
@@ -190,8 +210,8 @@ export function People({
               <strong>{t("path.actualSkills")}</strong>
               {lastConfirmation.skills.map((skill) => (
                 <p key={skill.skill_id}>
-                  {catalogText(skill.skill_id, "title", skill.skill_id)}:{" "}
-                  {num(skill.before)} → {num(skill.after)}
+                  {skillName(skill.skill_id)}: {num(skill.before)} →{" "}
+                  {num(skill.after)}
                 </p>
               ))}
             </div>
@@ -210,21 +230,10 @@ export function People({
             <div>
               <strong>{t("path.roadmap")}</strong>
               <p>
-                {lastConfirmation.next_event_id_before
-                  ? catalogText(
-                      lastConfirmation.next_event_id_before,
-                      "title",
-                      lastConfirmation.next_event_id_before,
-                    )
-                  : "—"}{" "}
-                →{" "}
-                {lastConfirmation.next_event_id_after
-                  ? catalogText(
-                      lastConfirmation.next_event_id_after,
-                      "title",
-                      lastConfirmation.next_event_id_after,
-                    )
-                  : "—"}
+                {nextStep(
+                  lastConfirmation.next_event_id_before,
+                  lastConfirmation.next_event_id_after,
+                )}
               </p>
             </div>
             <div>
@@ -456,7 +465,7 @@ export function People({
                   </div>
                   <h4>{t("path.allSkills")}</h4>
                   <p className="muted skill-matrix-note">
-                    {t("path.unassessedSkills")}
+                    {t("path.missingSkillZero")}
                   </p>
                   <div
                     className="skill-matrix-scroll"
@@ -477,7 +486,7 @@ export function People({
                         <span role="columnheader">{t("path.required")}</span>
                       </div>
                       {allSkillIds.map((skillId) => {
-                        const current = profileLoad.data?.skills[skillId];
+                        const current = profileLoad.data?.skills[skillId] ?? 0;
                         const required =
                           targetProfile?.required_skills[skillId];
                         return (
@@ -502,16 +511,14 @@ export function People({
                                 </span>
                               )}
                             </span>
-                            <strong role="cell">
-                              {current == null ? "—" : num(current)}
-                            </strong>
+                            <strong role="cell">{num(current)}</strong>
                             <span role="cell">
                               {required == null ? (
                                 "—"
                               ) : (
                                 <>
                                   {num(required)}
-                                  {current != null && required > current && (
+                                  {required > current && (
                                     <small>
                                       {t("path.gapAmount", {
                                         count: num(required - current),
@@ -559,7 +566,9 @@ export function People({
                                   )?.duration_hours,
                                 ),
                               })}
-                              {step.session ? ` · ${step.session}` : ""}
+                              {step.session
+                                ? ` · ${formatDate(locale, step.session)}`
+                                : ""}
                             </small>
                           </div>
                         ))}
@@ -615,7 +624,7 @@ export function People({
                               )?.title ?? record.event_id,
                             )}
                             <small>
-                              {record.date} ·{" "}
+                              {formatDate(locale, record.date)} ·{" "}
                               {enumText("status", record.status)}
                             </small>
                           </span>
