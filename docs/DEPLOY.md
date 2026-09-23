@@ -10,3 +10,7 @@ career.aiviom.ai {
 ```
 Before applying: record old hash and copy backup inside new project; diff addition only; validate inside existing Caddy container; new app health200 first. Then restart only edge-proxy-caddy once, verify career HTTPS/health and existing public domain baseline. Do not claim deployed until checked. On failure restore backup and ask before additional shared restart unless necessary for authorized rollback.
 Deploy artifact uses git archive of a checked commit; .env transferred privately, never git. Docker build only new project. Record RELEASE_SHA and verify health. Updates rebuild only career-quest web. SQLite volume preserved.
+
+Final deployment: c2c84d7 built and healthy on port3500. Legacy lexora-prod-caddy was discovered also binding80/443 with host networking; owner explicitly authorized stopping it (not deleting). A second edge-proxy-caddy restart was separately authorized for certificate issuance after resolving that conflict. Do not restart legacy proxy without resolving the port conflict. Existing silte upstream127.0.0.1:3402 is not listening; outside Career Quest scope.
+
+HTTPS career.aiviom.ai and health PASS. Independent clean clone live gateway PASS in6244ms. Existing tenly.ink, aiviom.ai, kabiden-azat.ink, dogslabs.org and lexora.dogslabs.org returned200 after proxy correction.

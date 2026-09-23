@@ -1,275 +1,73 @@
 {
-  "document_type": "draft_release_manifest_not_application_config",
+  "document_type": "verified_release_evidence",
   "project": "Career Quest",
-  "project_id": "hack-6ee0248f-aiviom",
   "team": "AIVIOM",
-  "scope": "employee_development_internal_contour_only",
-  "source_spec_version": "1.0",
-  "readiness": "DRAFT_SPEC_BASED",
-  "application_verified": false,
-  "repository": {
-    "url": "https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom.git",
-    "branch": "main",
-    "tested_commit": null,
-    "published_commit": null,
-    "access_instructions": null
-  },
+  "repository": "https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom",
+  "branch": "main",
+  "tested_application_commit": "c2c84d76b05e2b917c1f461aaa7ea39c7fd3381a",
   "runtime": {
-    "operating_systems_tested": [],
-    "architecture_tested": null,
-    "language": null,
-    "runtime_version": null,
-    "package_manager": null,
-    "package_manager_version": null,
-    "framework": null,
-    "framework_version": null,
-    "database": null,
-    "database_version": null,
-    "orm": null,
-    "orm_version": null,
-    "lockfile_path": null,
-    "container_tools_required": null,
-    "container_tools_versions": null,
-    "system_dependencies": null,
-    "network_required": null,
-    "resources_tested": null
+    "local": "Node20.20 macOS",
+    "server": "Node22 Debian container on Ubuntu22 x86_64",
+    "database": "SQLite",
+    "stack": [
+      "TypeScript",
+      "React19",
+      "Vite6",
+      "Express4",
+      "OpenAI SDK6"
+    ]
   },
   "commands": {
-    "working_directory": null,
-    "install": null,
-    "migrate": null,
-    "seed": null,
-    "start": null,
-    "stop": null,
-    "restart": null,
-    "reset_demo": null,
-    "tests": {
-      "domain": null,
-      "integration": null,
-      "ui_e2e": null,
-      "live_smoke": null
-    }
+    "install": "npm ci",
+    "build": "npm run build",
+    "start": "npm start",
+    "test": "npm test",
+    "source": "npm run verify:source",
+    "judge": "npm run smoke:judge"
+  },
+  "verification": {
+    "unit_integration": "39/39 PASS",
+    "clean_clone": "PASS isolated no key and no .env",
+    "restart_persistence": "PASS skills XP imports and session persisted",
+    "source_integrity": "7 immutable files PASS",
+    "dependency_audit": "0 vulnerabilities",
+    "secret_pattern_scan": "PASS",
+    "server_live_ai": {
+      "mode": "live_ai",
+      "model": "gpt-5.4-mini",
+      "e2e_ms": 6388,
+      "input_tokens": 2399,
+      "output_tokens": 264
+    },
+    "hosted_gateway": {
+      "status": "PASS",
+      "clean_environment": true,
+      "mode": "live_ai",
+      "model": "gpt-5.4-mini",
+      "e2e_ms": 6244,
+      "input_tokens": 1753,
+      "output_tokens": 319
+    },
+    "https_health": "PASS",
+    "hosted_ui": "PASS built-in Codex browser, live recommendation visible, no console errors"
   },
   "deployment": {
-    "main_launch_path_verified": false,
-    "local_url": null,
-    "port": null,
-    "health_url": null,
-    "hosted_demo_url": null,
-    "persistence_paths": null,
-    "reset_scope_and_effect": null,
-    "backup_restore_notes": null
+    "domain": "https://career.aiviom.ai",
+    "ip": "34.165.120.4",
+    "compose_project": "career-quest",
+    "port": "127.0.0.1:3500",
+    "image_digest": "sha256:f7bf8a1a2d958c84eb887cb9f541437052b08905b1c2448ce47151fcf5c7ef21",
+    "status": "LIVE"
   },
-  "environment_inventory_confirmed": false,
-  "environment_variables": [],
-  "dataset": {
-    "spec_declared_archive_sha256": "e7a6ee9c2746bf946df32587debf757a59ad572c70acb45ce5842e9a12f01eb6",
-    "inspected_archive_sha256": "58bb943b1d81f25cb5ba1be2142ac216abf7b6d0d63a1668b3b45fd65c67929f",
-    "inspected_archive_bytes": 64298,
-    "release_selected_sha256": null,
-    "approved_source_instructions": null,
-    "actual_runtime_path": null,
-    "meta_version": "1.0",
-    "data_as_of": "2026-10-01",
-    "history_start": "2024-10-01",
-    "history_end": "2026-09-30",
-    "expected_original_counts": {
-      "employees": 200,
-      "events": 40,
-      "skills": 60,
-      "role_profiles": 32,
-      "activity_history": 2743
-    },
-    "original_runtime_counts_verified": false,
-    "extensions_namespace": null
-  },
-  "policy": {
-    "version": null,
-    "historical_completion_time": "date_proxy_when_completed_at_missing",
-    "completion_time_quality_for_proxy": "proxy",
-    "same_day_session_rule": null,
-    "roadmap_search_limits": null,
-    "ranking_shortlist_size": null,
-    "unknown_duration_E_policy": null,
-    "historical_XP_baseline": null,
-    "mandatory_completion_XP_resolution": null,
-    "no_next_step_categories_resolution": null,
-    "normal_completion_verification": null
-  },
-  "ai": {
-    "provider": null,
-    "model_id": null,
-    "prompt_version": null,
-    "structured_output_adapter": null,
-    "judge_access_mode": null,
-    "judge_access_url": null,
-    "judge_access_instructions_without_secrets": null,
-    "access_until": null,
-    "rate_and_budget_limits": null,
-    "data_processing_approval": null,
-    "clean_session_verified": false,
-    "new_profile_live_test_status": "NOT_RUN",
-    "fallback_description": null
-  },
-  "demo": {
-    "production_identity_switch_disabled_verified": false,
-    "workspace_isolation_verified": false,
-    "reset_verified": false,
-    "identities": [
-      {
-        "role": "employee",
-        "identity_id": null,
-        "entry_instructions": null,
-        "scope": null
-      },
-      {
-        "role": "advisor",
-        "identity_id": null,
-        "entry_instructions": null,
-        "scope": null
-      },
-      {
-        "role": "manager",
-        "identity_id": null,
-        "entry_instructions": null,
-        "scope": null
-      },
-      {
-        "role": "hr",
-        "identity_id": null,
-        "entry_instructions": null,
-        "scope": null
-      },
-      {
-        "role": "supervisor",
-        "identity_id": null,
-        "entry_instructions": null,
-        "scope": null
-      }
-    ],
-    "scenario_ids": null
-  },
-  "targets_not_measurements": {
-    "ui_ms": 2000,
-    "recommendation_ms": 10000
-  },
-  "measurements": {
-    "ui_report": null,
-    "cold_live_report": null,
-    "cached_live_report": null,
-    "sample_size": null
-  },
-  "test_results": {
-    "T01": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T02": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T03": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T04": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T05": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T06": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T07": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T08": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T09": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T10": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T11": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T12": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T13": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T14": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T15": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T16": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T17": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T18": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T19": {
-      "status": "NOT_RUN",
-      "evidence": null
-    },
-    "T20": {
-      "status": "NOT_RUN",
-      "evidence": null
-    }
-  },
-  "clean_room": {
-    "status": "NOT_RUN",
-    "environment": null,
-    "report": null
-  },
-  "security": {
-    "secret_scan_status": "NOT_RUN",
-    "backend_scope_test_status": "NOT_RUN",
-    "notes": null
-  },
-  "third_party_inventory_confirmed": false,
-  "contributors": [],
-  "known_open_issues": [
-    "CQ-OPEN-01",
-    "CQ-OPEN-02",
-    "CQ-OPEN-03",
-    "CQ-OPEN-04",
-    "CQ-OPEN-05",
-    "CQ-OPEN-06",
-    "CQ-OPEN-07",
-    "CQ-OPEN-08",
-    "CQ-OPEN-09",
-    "CQ-OPEN-10",
-    "CQ-OPEN-11",
-    "CQ-OPEN-12"
-  ],
   "submission": {
-    "confirmed": false,
-    "evidence": null,
-    "limitations": null
-  }
+    "github": "pushed",
+    "organizer_form": "captain submits; not submitted by agent"
+  },
+  "limitations": [
+    "Demo role switching, no corporate SSO",
+    "RU primary; partial kk/en",
+    "Fixed demo catalog/advisor/reward policies",
+    "Bounded roadmap search, no proof of optimality",
+    "Live AI depends on network and finite budget; promotional credits valid30days per captain"
+  ]
 }

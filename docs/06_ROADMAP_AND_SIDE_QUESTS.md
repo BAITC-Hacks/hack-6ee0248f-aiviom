@@ -1,5 +1,7 @@
 # 06. Roadmap, milestones и side quests
 
+> Статус: проектные материалы. Фактический запуск и результаты текущей реализации см. в [README](../README.md), [ACCEPTANCE](ACCEPTANCE.md), [FORMULAS](FORMULAS.md) и [DEMO_API](DEMO_API.md). Непроверенные положения ниже не являются заявлением о готовности.
+
 Основание: [S-FINAL §§7–8, 12–13](SOURCES.md).
 
 ## 1. Что означает milestone
