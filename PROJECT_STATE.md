@@ -1,12 +1,11 @@
 # Career Quest state
-2026-09-23, final release preparation (Asia/Almaty). Official private origin/main; initial teammate history preserved.
 
-Implemented: immutable archive import, common skill/eligibility/roadmap formulas, five server-scoped demo roles, live AI with validated factors/alternatives, pure preview, transactional completion/quest/XP/rewards, HR analytics/import, external sourced proposals. Original source counts: 200 employees /40 events /60 skills /32 role profiles /2743 history rows.
+Atlas is a separate release after the hackathon. The submission is preserved at tag `submission-2026-09-23`, SHA `1c397c1f0c10652707e34d9d0f3d4776eda0e97b`. Official origin and history unchanged. Current integration branch: `release/atlas-rebrand`.
 
-Verified: independent clean clone at c2c84d7 installed/built, 39 tests passed, five role APIs, new import, completion, full quest, workspace isolation and restart persistence. Final audit fixed preservation of declined history, import lifetime XP baseline, scheduled completion date, per-workspace gateway cookies, total gateway deadline and reservation only on real provider request. Regression checks added. UI verified in Codex browser including mobile390, import without history and refreshed HR totals.
+Implemented and integrated so far: shared locale negotiation, source catalog RU/KK/EN, local Noto Sans with verified Kazakh glyphs, localized import issue codes and warnings, server/gateway/error languages, structured AI facts and concise live model explanations. Current source snapshot remains 2026-10-01 and 7 source files verify unchanged. Frontend atlas integration is underway.
 
-Live AI: new-profile cold2.151s, changed-goal2.697s, cached1ms; external sourced search4.713s. These are small local samples, not a p95 guarantee. Hosted clean access PASS: no .env/key, new-profile live_ai6244ms (1753 input/319 output tokens). HTTPS health and browser UI PASS.
+Verified backend/integration checkpoint: 53 tests, typecheck, build and source manifest pass at `022a1bf`. New-profile real OpenAI: ru 3811ms, kk 2482ms, en 2484ms; all live_ai, four factors, validated alternatives. Small sample, not p95. User timebox from 10:45 UTC: finish implementation/checks within 30–40 minutes; decorative polish is lower priority than working scenarios.
 
-Release target: career.aiviom.ai /34.165.120.4, isolated career-quest Compose on127.0.0.1:3500. DNS resolves correctly. One shared Caddy restart authorized after validation. Final application is deployed; documentation-only publication follows.
+Production remains submission SHA1c397c1 on career.aiviom.ai /34.165.120.4. Rebrand release must not replace it before the agreed post-hackathon release. Shared Caddy and other projects are outside the change scope. Captain submits organizer form; GitHub publication does not submit the form.
 
-Captain submits organizer form. GitHub push alone is not form submission. Private specification removed from tracked main at owner's request; local copy retained, history not rewritten.
+See docs/REBRAND.md for design decision, source/font provenance, verification matrix and remaining limitations. Private specification stays ignored locally; no history rewrite.
