@@ -1,22 +1,38 @@
 {
   "schemaVersion": 1,
-  "name": "Career Quest operating workspace",
+  "name": "Career Quest working atlas",
   "mode": "operate",
   "colors": {
-    "ink": "#26332f",
-    "muted": "#66746e",
-    "page": "#f5f7f5",
-    "surface": "#ffffff",
-    "sidebar": "#edf2ee",
-    "border": "#dfe6e1",
-    "primary": "#176b4a",
-    "successSurface": "#e7f3ec",
-    "warning": "#8d6122",
-    "warningSurface": "#fcf4e7",
-    "error": "#ad4140",
-    "errorSurface": "#fff0ef"
+    "ink": "#20252D",
+    "muted": "#59616D",
+    "page": "#F6F5F1",
+    "surface": "#FFFFFF",
+    "sidebar": "#FFFFFF",
+    "secondarySurface": "#EFEEE8",
+    "border": "#DADCE0",
+    "primary": "#2846C7",
+    "primarySurface": "#E8ECFC",
+    "success": "#176742",
+    "successSurface": "#E7F4EC",
+    "warning": "#865B13",
+    "warningSurface": "#FFF1D8",
+    "error": "#A83439",
+    "errorSurface": "#FCE9E8"
   },
-  "typography": {"family": "Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif", "numerals": "tabular-nums"},
-  "radii": {"control": 9, "panel": 14},
-  "layout": {"sidebarWidth": 246, "contentMaxWidth": 1500, "mobileNavBreakpoint": 830}
+  "typography": {
+    "family": "Noto Sans, Arial, sans-serif",
+    "bodySize": 16,
+    "tableSize": 14,
+    "captionFloor": 12,
+    "numerals": "tabular-nums"
+  },
+  "radii": { "control": 8, "panel": 12 },
+  "spacing": [4, 8, 12, 16, 24, 32, 48, 64],
+  "layout": {
+    "sidebarWidth": 240,
+    "contentMaxWidth": 1440,
+    "tabletMenuBreakpoint": 1024,
+    "phoneBreakpoint": 768,
+    "phoneNavPrimaryCount": 3
+  }
 }

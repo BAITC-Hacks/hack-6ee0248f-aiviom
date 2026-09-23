@@ -590,7 +590,13 @@ export function EmployeePath({
                         {roadmap.alternatives.map((quest) => (
                           <div className="row-item" key={quest.quest_id}>
                             <div>
-                              <strong>{quest.title}</strong>
+                              <strong>
+                                {catalogText(
+                                  quest.quest_id,
+                                  "title",
+                                  quest.title,
+                                )}
+                              </strong>
                               <p>
                                 {enumText("status", quest.status)} ·{" "}
                                 {t("path.afterAcceptance")}

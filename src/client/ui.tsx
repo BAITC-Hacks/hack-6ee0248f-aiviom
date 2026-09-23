@@ -158,6 +158,7 @@ export function Dialog({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const dialog = React.useRef<HTMLDialogElement>(null);
   const trigger = React.useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -190,7 +191,7 @@ export function Dialog({
         <button
           type="button"
           className="icon-button"
-          aria-label="Close"
+          aria-label={t("common.close")}
           onClick={onClose}
         >
           <X size={20} />
@@ -266,7 +267,12 @@ export function formatDate(locale: string, value?: string | null) {
   if (!matched) return value;
   return new Intl.DateTimeFormat(
     locale === "kk" ? "kk-KZ" : locale === "en" ? "en-GB" : "ru-RU",
-    { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" },
+    {
+      day: "2-digit",
+      month: locale === "kk" ? "2-digit" : "short",
+      year: "numeric",
+      timeZone: "UTC",
+    },
   ).format(
     new Date(
       Date.UTC(Number(matched[1]), Number(matched[2]) - 1, Number(matched[3])),

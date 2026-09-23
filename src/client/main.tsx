@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -58,15 +58,21 @@ const icons = {
   audit: ShieldCheck,
 };
 const descriptions: Record<Tab, string> = {
-  path: "page.pathDescription",
-  quests: "page.questsDescription",
-  people: "page.peopleDescription",
-  insights: "page.insightsDescription",
-  catalog: "page.catalogDescription",
-  external: "page.externalDescription",
-  rewards: "page.rewardsDescription",
-  audit: "page.auditDescription",
+  path: "page.path",
+  quests: "page.quests",
+  people: "page.people",
+  insights: "page.insights",
+  catalog: "page.catalog",
+  external: "page.external",
+  rewards: "page.rewards",
+  audit: "page.audit",
 };
+function demoIdentityName(identity: Session["identity"]): string {
+  if (identity.role !== "employee") return "";
+  return identity.id === "employee" && identity.label.includes(" · ")
+    ? identity.label.split(" · ").slice(1).join(" · ")
+    : identity.label;
+}
 
 function App() {
   const { locale, setLocale, t } = useI18n();
@@ -83,6 +89,11 @@ function App() {
     text: string;
     tone: "error" | "success";
   } | null>(null);
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+    setFlash(null);
+  }, [locale]);
   const [switching, setSwitching] = useState(false);
   const [asOf, setAsOf] = useState("");
   const [revision, setRevision] = useState(0);
@@ -112,22 +123,25 @@ function App() {
   }, [role]);
   const action: Action = useCallback(
     async (work, message, refresh = true) => {
+      const requestLocale = locale;
       try {
         setFlash(null);
         const result = await work();
-        if (message) setFlash({ text: message, tone: "success" });
+        if (message && requestLocale === localeRef.current)
+          setFlash({ text: message, tone: "success" });
         if (refresh) setRevision((value) => value + 1);
         return result;
       } catch (cause) {
-        setFlash({
-          text:
-            cause instanceof Error ? cause.message : t("common.actionFailed"),
-          tone: "error",
-        });
+        if (requestLocale === localeRef.current)
+          setFlash({
+            text:
+              cause instanceof Error ? cause.message : t("common.actionFailed"),
+            tone: "error",
+          });
         return null;
       }
     },
-    [t],
+    [t, locale],
   );
   async function changeIdentity(identity_id: string) {
     setSwitching(true);
@@ -232,9 +246,11 @@ function App() {
           </span>
           <div className="topbar-right">
             <div className="identity-chip">
-              <strong title={session.identity.label}>
-                {session.identity.label}
-              </strong>
+              {session.identity.role === "employee" && (
+                <strong title={demoIdentityName(session.identity)}>
+                  {demoIdentityName(session.identity)}
+                </strong>
+              )}
               <Tag>{t(`role.${session.identity.role}`)}</Tag>
             </div>
             <label className="locale-picker">
@@ -393,12 +409,15 @@ function App() {
                   (item) => item.id === session.identity.id,
                 ) && (
                   <option value={session.identity.id}>
-                    {session.identity.label}
+                    {demoIdentityName(session.identity) ||
+                      t(`role.${session.identity.role}`)}
                   </option>
                 )}
                 {session.identities.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.label} · {t(`role.${item.role}`)}
+                    {item.role === "employee"
+                      ? `${demoIdentityName(item)} · ${t(`role.${item.role}`)}`
+                      : t(`role.${item.role}`)}
                   </option>
                 ))}
               </select>

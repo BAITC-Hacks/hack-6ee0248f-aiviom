@@ -236,8 +236,18 @@ export function Quests({
                     aria-current={quest?.id === item.id ? "true" : undefined}
                   >
                     <div>
-                      <strong>{item.title}</strong>
-                      <span title={item.description}>{item.description}</span>
+                      <strong>
+                        {catalogText(item.id, "title", item.title)}
+                      </strong>
+                      <span
+                        title={catalogText(
+                          item.id,
+                          "description",
+                          item.description,
+                        )}
+                      >
+                        {catalogText(item.id, "description", item.description)}
+                      </span>
                     </div>
                     <Tag
                       tone={
@@ -425,11 +435,13 @@ export function Quests({
                 >
                   {enumText("status", quest.status)}
                 </Tag>
-                <h3>{quest.title}</h3>
-                <p>{quest.description}</p>
+                <h3>{catalogText(quest.id, "title", quest.title)}</h3>
+                <p>{catalogText(quest.id, "description", quest.description)}</p>
                 <dl>
                   <dt>{t("quests.deliverables")}</dt>
-                  <dd>{quest.deliverables}</dd>
+                  <dd>
+                    {catalogText(quest.id, "deliverables", quest.deliverables)}
+                  </dd>
                   <dt>{t("quests.skills")}</dt>
                   <dd>
                     {quest.skill_ids
@@ -437,7 +449,11 @@ export function Quests({
                       .join(", ") || t("common.unknown")}
                   </dd>
                   <dt>{t("quests.criteria")}</dt>
-                  <dd>{quest.criteria || t("quests.criteriaPending")}</dd>
+                  <dd>
+                    {quest.criteria
+                      ? catalogText(quest.id, "criteria", quest.criteria)
+                      : t("quests.criteriaPending")}
+                  </dd>
                   <dt>{t("quests.resources")}</dt>
                   <dd>
                     {quest.requires_resource
@@ -455,7 +471,11 @@ export function Quests({
                       : t("quests.existingRule")}
                   </dd>
                   <dt>{t("quests.evidence")}</dt>
-                  <dd>{quest.evidence || t("quests.notSubmitted")}</dd>
+                  <dd>
+                    {quest.evidence
+                      ? catalogText(quest.id, "evidence", quest.evidence)
+                      : t("quests.notSubmitted")}
+                  </dd>
                 </dl>
                 {quest.source_url && (
                   <a href={quest.source_url} target="_blank" rel="noreferrer">

@@ -216,7 +216,19 @@ export function People({
                     <div className="row-item" key={recordId(record) || index}>
                       <div>
                         <strong>
-                          {t(`help.${stringValue(record.reason)}`)}
+                          {[
+                            "time",
+                            "format",
+                            "value",
+                            "familiar",
+                            "other",
+                          ].includes(stringValue(record.reason))
+                            ? t(`help.${stringValue(record.reason)}`)
+                            : catalogText(
+                                "DEMO_HELP",
+                                "reason",
+                                stringValue(record.reason),
+                              )}
                         </strong>
                         <p>
                           {stringValue(record.employee_id)} ·{" "}
