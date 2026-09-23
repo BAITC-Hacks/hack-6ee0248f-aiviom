@@ -3,6 +3,7 @@ import { ArrowRight, Search } from "lucide-react";
 import type { ExternalResults, Session } from "../api";
 import { endpoint } from "../api";
 import { useI18n } from "../i18n";
+import { Select } from "../Select";
 import {
   Empty,
   Notice,
@@ -36,7 +37,6 @@ export function ExternalSearch({
     [session.identity.employee_id],
   );
   const [skillId, setSkillId] = useState("");
-  const [skillQuery, setSkillQuery] = useState("");
   const [level, setLevel] = useState(2);
   const [format, setFormat] = useState<
     "any" | "online" | "offline" | "self_paced"
@@ -84,39 +84,26 @@ export function ExternalSearch({
       if (current === sequence.current) setBusy(false);
     }
   }
-  const skills = (catalogLoad.data?.skills ?? []).filter((skill) =>
-    `${skill.name} ${catalogText(skill.skill_id, "title", skill.name)}`
-      .toLocaleLowerCase()
-      .includes(skillQuery.toLocaleLowerCase()),
-  );
+  const skills = catalogLoad.data?.skills ?? [];
   return (
     <div className="main-stack">
       <Panel title={t("external.searchBySkill")}>
         <p className="muted">{t("external.disclaimer")}</p>
         <form className="external-form" onSubmit={search}>
           <label>
-            {t("common.searchSkills")}
-            <input
-              type="search"
-              value={skillQuery}
-              onChange={(event) => setSkillQuery(event.target.value)}
-              placeholder={t("common.searchSkills")}
-            />
-          </label>
-          <label>
             {t("common.skill")}
-            <select
+            <Select
+              label={t("common.skill")}
               value={skillId}
-              onChange={(event) => setSkillId(event.target.value)}
+              onChange={setSkillId}
               required
-            >
-              <option value="">{t("external.chooseSkill")}</option>
-              {skills.map((skill) => (
-                <option key={skill.skill_id} value={skill.skill_id}>
-                  {catalogText(skill.skill_id, "title", skill.name)}
-                </option>
-              ))}
-            </select>
+              searchable
+              placeholder={t("external.chooseSkill")}
+              options={skills.map((skill) => ({
+                value: skill.skill_id,
+                label: catalogText(skill.skill_id, "title", skill.name),
+              }))}
+            />
           </label>
           <label>
             {t("external.desiredLevel")}
@@ -131,20 +118,18 @@ export function ExternalSearch({
           </label>
           <label>
             {t("common.format")}
-            <select
+            <Select<typeof format>
+              label={t("common.format")}
               value={format}
-              onChange={(event) =>
-                setFormat(event.target.value as typeof format)
-              }
-            >
-              {["any", "online", "offline", "self_paced"].map((value) => (
-                <option key={value} value={value}>
-                  {enumText("format", value)}
-                </option>
-              ))}
-            </select>
+              onChange={setFormat}
+              options={(
+                ["any", "online", "offline", "self_paced"] as const
+              ).map((value) => ({ value, label: enumText("format", value) }))}
+            />
           </label>
-          <Submit busy={busy}>{t("external.searchSources")}</Submit>
+          <Submit busy={busy} disabled={!skillId}>
+            {t("external.searchSources")}
+          </Submit>
         </form>
         <Status
           loading={catalogLoad.busy}

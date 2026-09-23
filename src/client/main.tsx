@@ -25,6 +25,7 @@ import type { Session } from "./api";
 import { endpoint, setApiLocale } from "./api";
 import { I18nProvider, useI18n } from "./i18n";
 import { LanguagePicker } from "./LanguagePicker";
+import { Select } from "./Select";
 import {
   Dialog,
   Notice,
@@ -395,27 +396,33 @@ function App() {
             <p className="muted">{t("demo.explanation")}</p>
             <label>
               {t("demo.role")}
-              <select
+              <Select
+                label={t("demo.role")}
                 disabled={switching}
                 value={session.identity.id}
-                onChange={(event) => changeIdentity(event.target.value)}
-              >
-                {!session.identities.some(
-                  (item) => item.id === session.identity.id,
-                ) && (
-                  <option value={session.identity.id}>
-                    {demoIdentityName(session.identity) ||
-                      t(`role.${session.identity.role}`)}
-                  </option>
-                )}
-                {session.identities.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.role === "employee"
-                      ? `${demoIdentityName(item)} · ${t(`role.${item.role}`)}`
-                      : t(`role.${item.role}`)}
-                  </option>
-                ))}
-              </select>
+                onChange={changeIdentity}
+                options={[
+                  ...(!session.identities.some(
+                    (item) => item.id === session.identity.id,
+                  )
+                    ? [
+                        {
+                          value: session.identity.id,
+                          label:
+                            demoIdentityName(session.identity) ||
+                            t(`role.${session.identity.role}`),
+                        },
+                      ]
+                    : []),
+                  ...session.identities.map((item) => ({
+                    value: item.id,
+                    label:
+                      item.role === "employee"
+                        ? `${demoIdentityName(item)} · ${t(`role.${item.role}`)}`
+                        : t(`role.${item.role}`),
+                  })),
+                ]}
+              />
             </label>
             <form className="form-stack" onSubmit={changeDate}>
               <label>

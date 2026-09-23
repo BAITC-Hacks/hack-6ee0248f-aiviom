@@ -53,6 +53,13 @@
       "css": ".ds-field{min-height:44px;width:100%;padding:10px 12px;border:1px solid #858B94;border-radius:8px;background:#fff;color:#20252D;font:400 16px 'Noto Sans',Arial,sans-serif}.ds-field:focus-visible{border-color:#2846C7;outline:3px solid #2846C7;outline-offset:3px}"
     },
     {
+      "name": "Selection Popup",
+      "kind": "input",
+      "description": "Shared dropdown with 44px options; long lists add search.",
+      "html": "<div class=\"ds-select\"><button class=\"ds-select-trigger\" aria-expanded=\"true\">English</button><div class=\"ds-select-popup\"><button class=\"ds-select-option\" aria-selected=\"true\">English</button><button class=\"ds-select-option\">Қазақша</button><button class=\"ds-select-option\">Русский</button></div></div>",
+      "css": ".ds-select{position:relative;font:400 14px 'Noto Sans',Arial,sans-serif}.ds-select-trigger{display:flex;justify-content:space-between;align-items:center;min-width:120px;min-height:44px;padding:8px 12px;border:1px solid #858B94;border-radius:8px;background:#fff;color:#20252D}.ds-select-popup{position:absolute;z-index:1;top:50px;right:0;min-width:168px;padding:4px;border:1px solid #858B94;border-radius:8px;background:#fff;box-shadow:0 12px 32px rgba(19,31,67,.16)}.ds-select-option{display:flex;align-items:center;width:100%;min-height:44px;padding:8px 12px;border:0;border-radius:6px;background:#fff;color:#20252D;text-align:left}.ds-select-option:hover,.ds-select-option[aria-selected=true]{background:#E8ECFC;color:#2846C7}.ds-select-trigger:focus-visible,.ds-select-option:focus-visible{outline:3px solid #2846C7;outline-offset:3px}"
+    },
+    {
       "name": "Working Panel",
       "kind": "card",
       "refersTo": "panel",
