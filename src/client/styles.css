@@ -226,6 +226,8 @@ a {
 .select-popup {
   position: absolute;
   z-index: 80;
+  display: flex;
+  flex-direction: column;
   top: calc(100% + 6px);
   right: 0;
   min-width: max(100%, 168px);
@@ -242,9 +244,11 @@ a {
 }
 .select-options {
   max-height: min(300px, 48vh);
+  min-height: 0;
   overflow-y: auto;
 }
 .select-search {
+  flex: none;
   width: 100%;
   min-height: 44px;
   margin-bottom: 4px;

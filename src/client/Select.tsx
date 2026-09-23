@@ -39,7 +39,7 @@ export function Select<T extends string = string>({
   const { t } = useI18n();
   const id = useId();
   const [open, setOpen] = useState(false);
-  const [above, setAbove] = useState(false);
+  const [placement, setPlacement] = useState({ above: false, maxHeight: 300 });
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const root = useRef<HTMLDivElement>(null);
@@ -72,13 +72,41 @@ export function Select<T extends string = string>({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  function start() {
+  function fitPopup() {
     const bounds = root.current?.getBoundingClientRect();
-    setAbove(
-      Boolean(
-        bounds && window.innerHeight - bounds.bottom < 280 && bounds.top > 280,
-      ),
+    if (!bounds) return;
+    const dialog = root.current?.closest("dialog");
+    const dialogBounds = dialog?.getBoundingClientRect();
+    const dialogStyle = dialog ? getComputedStyle(dialog) : null;
+    const viewportTop = window.visualViewport?.offsetTop ?? 0;
+    const viewportBottom =
+      viewportTop + (window.visualViewport?.height ?? window.innerHeight);
+    const top = Math.max(
+      viewportTop + 8,
+      dialogBounds
+        ? dialogBounds.top + (parseFloat(dialogStyle?.paddingTop ?? "0") || 8)
+        : viewportTop + 8,
     );
+    const bottom = Math.min(
+      viewportBottom - 8,
+      dialogBounds
+        ? dialogBounds.bottom -
+            (parseFloat(dialogStyle?.paddingBottom ?? "0") || 8)
+        : viewportBottom - 8,
+    );
+    const aboveSpace = Math.max(0, bounds.top - top - 6);
+    const belowSpace = Math.max(0, bottom - bounds.bottom - 6);
+    const desiredHeight =
+      8 + (hasSearch ? 52 : 0) + Math.min(options.length * 48, 300);
+    const above = belowSpace < desiredHeight && aboveSpace > belowSpace;
+    setPlacement({
+      above,
+      maxHeight: Math.max(44, Math.floor(above ? aboveSpace : belowSpace)),
+    });
+  }
+
+  function start() {
+    fitPopup();
     const current = options.findIndex(
       (option) => option.value === value && !option.disabled,
     );
@@ -196,7 +224,8 @@ export function Select<T extends string = string>({
       </button>
       {open && (
         <div
-          className={`select-popup ${above ? "above" : ""}`}
+          className={`select-popup ${placement.above ? "above" : ""}`}
+          style={{ maxHeight: placement.maxHeight }}
           onKeyDown={onPopupKeyDown}
         >
           {hasSearch && (
