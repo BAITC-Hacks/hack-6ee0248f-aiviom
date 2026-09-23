@@ -29,15 +29,25 @@ function errorMessage(value: unknown, status: number): string {
   return `Запрос не выполнен (${status}). Повторите попытку.`;
 }
 
+let requestLocale: import('../shared/locale').Locale = 'ru';
+export function setApiLocale(locale: import('../shared/locale').Locale) { requestLocale = locale; }
+
+export class ApiError extends Error {
+  constructor(message: string, public code: string, public messageKey?: string, public params?: Record<string, string | number>, public requestId?: string) { super(message); this.name = 'ApiError'; }
+}
+
 export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const response = await fetch(path, {
     method,
     credentials: 'same-origin',
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers: { 'Accept-Language': requestLocale, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(errorMessage(payload, response.status));
+  if (!response.ok) {
+    const error = payload as { code?: string; message_key?: string; params?: Record<string, string | number>; request_id?: string } | null;
+    throw new ApiError(errorMessage(payload, response.status), error?.code ?? 'REQUEST_FAILED', error?.message_key, error?.params, error?.request_id);
+  }
   return payload as T;
 }
 
