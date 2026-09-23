@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -76,7 +82,7 @@ function demoIdentityName(identity: Session["identity"]): string {
 
 function App() {
   const { locale, setLocale, t } = useI18n();
-  useEffect(() => {
+  useLayoutEffect(() => {
     setApiLocale(locale);
   }, [locale]);
   const sessionLoad = useLoad(endpoint.session, []);

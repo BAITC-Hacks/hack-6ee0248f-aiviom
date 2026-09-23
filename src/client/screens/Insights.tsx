@@ -78,6 +78,13 @@ interface ImportPreview {
 }
 type UploadKind = "employees" | "history";
 type Upload = { file: File; text: string } | null;
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+function assertImportBodySize(body: unknown, message: string) {
+  if (
+    new TextEncoder().encode(JSON.stringify(body)).byteLength > MAX_IMPORT_BYTES
+  )
+    throw new Error(message);
+}
 
 function FileSlot({
   label,
@@ -195,6 +202,10 @@ export function Insights({
     if (kind === "employees") setEmployees(null);
     else setHistory(null);
     const sequence = ++fileRead.current[kind];
+    if (file.size > MAX_IMPORT_BYTES) {
+      setFileError(t("import.fileTooLarge"));
+      return;
+    }
     try {
       const text = await file.text();
       if (sequence !== fileRead.current[kind]) return;
@@ -220,7 +231,9 @@ export function Insights({
     } catch {
       throw new Error(t("import.invalidJson"));
     }
-    return { employees: parsed, history: history?.text ?? "" };
+    const body = { employees: parsed, history: history?.text ?? "" };
+    assertImportBodySize(body, t("import.requestTooLarge"));
+    return body;
   }
   async function validate() {
     if (busy) return;
@@ -250,10 +263,18 @@ export function Insights({
     )
       return;
     setBusy(true);
-    const result = await action(
-      () => endpoint.importCommit(preview.body),
-      t("import.applied"),
-    );
+    let result = null;
+    try {
+      assertImportBodySize(preview.body, t("import.requestTooLarge"));
+      result = await action(
+        () => endpoint.importCommit(preview.body),
+        t("import.applied"),
+      );
+    } catch (cause) {
+      setFileError(
+        cause instanceof Error ? cause.message : t("import.validationFailed"),
+      );
+    }
     if (result) {
       invalidate();
       setEmployees(null);
@@ -306,6 +327,7 @@ export function Insights({
       {section === "import" && (
         <Panel title={t("import.title")}>
           <p className="muted">{t("import.hint")}</p>
+          <p className="field-hint">{t("import.sizeLimit")}</p>
           <div className="form-pair">
             <FileSlot
               label={t("import.employeesFile")}
