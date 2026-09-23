@@ -170,15 +170,28 @@ export function EmployeePath({
       item.role === profile?.goal?.target_role &&
       item.grade === profile?.goal?.target_grade,
   );
+  const skillPriority = (skillId: string) => {
+    const current = profile?.skills[skillId];
+    const required = targetProfile?.required_skills[skillId];
+    if (current != null && required != null && current < required)
+      return targetProfile?.critical_skills.includes(skillId) ? 0 : 1;
+    if (required != null) return 2;
+    return current != null ? 3 : 4;
+  };
   const allSkillIds = [
     ...new Set([
       ...(catalog?.skills.map((skill) => skill.skill_id) ?? []),
       ...Object.keys(profile?.skills ?? {}),
       ...Object.keys(targetProfile?.required_skills ?? {}),
     ]),
-  ].sort((left, right) =>
-    skillName(left).localeCompare(skillName(right), locale),
+  ].sort(
+    (left, right) =>
+      skillPriority(left) - skillPriority(right) ||
+      skillName(left).localeCompare(skillName(right), locale),
   );
+  const assessedSkillCount = allSkillIds.filter(
+    (skillId) => profile?.skills[skillId] != null,
+  ).length;
   const filteredHistory = [...(profile?.history ?? [])]
     .filter(
       (record) => historyStatus === "all" || record.status === historyStatus,
@@ -355,7 +368,7 @@ export function EmployeePath({
               </p>
               <div className="confirmed-result-grid">
                 <div>
-                  <strong>{t("path.skillPreview")}</strong>
+                  <strong>{t("path.actualSkills")}</strong>
                   {confirmedResult.skills.length ? (
                     confirmedResult.skills.map((skill) => (
                       <p key={skill.skill_id}>
@@ -756,7 +769,13 @@ export function EmployeePath({
                           );
                         })
                       ) : (
-                        <p className="muted">{t(profile.total_gap === 0 ? "path.goalSkillsMet" : "path.noRouteSteps")}</p>
+                        <p className="muted">
+                          {t(
+                            profile.total_gap === 0
+                              ? "path.goalSkillsMet"
+                              : "path.noRouteSteps",
+                          )}
+                        </p>
                       )}
                       <div className="route-destination">
                         <span className="route-connector" aria-hidden="true">
@@ -930,56 +949,72 @@ export function EmployeePath({
             <div className="side-stack">
               <Panel
                 title={t("path.allSkills")}
-                aside={<Tag>{fmt(allSkillIds.length)}</Tag>}
+                aside={
+                  <Tag>
+                    {fmt(assessedSkillCount)} / {fmt(allSkillIds.length)}
+                  </Tag>
+                }
               >
+                <p className="muted skill-matrix-note">
+                  {t("path.unassessedSkills")}
+                </p>
                 <div
-                  className="skill-matrix"
-                  role="table"
+                  className="skill-matrix-scroll"
+                  tabIndex={0}
+                  role="region"
                   aria-label={t("path.allSkills")}
                 >
-                  <div className="skill-matrix-head" role="row">
-                    <span role="columnheader">{t("common.skill")}</span>
-                    <span role="columnheader">{t("path.currentLevel")}</span>
-                    <span role="columnheader">{t("path.required")}</span>
+                  <div
+                    className="skill-matrix"
+                    role="table"
+                    aria-label={t("path.allSkills")}
+                  >
+                    <div className="skill-matrix-head" role="row">
+                      <span role="columnheader">{t("common.skill")}</span>
+                      <span role="columnheader">{t("path.currentLevel")}</span>
+                      <span role="columnheader">{t("path.required")}</span>
+                    </div>
+                    {allSkillIds.map((skillId) => {
+                      const current = profile.skills[skillId];
+                      const required = targetProfile?.required_skills[skillId];
+                      const critical =
+                        targetProfile?.critical_skills.includes(skillId);
+                      return (
+                        <div
+                          className="skill-matrix-row"
+                          role="row"
+                          key={skillId}
+                        >
+                          <span role="cell">
+                            {skillName(skillId)}{" "}
+                            {critical && (
+                              <Tag tone="amber">{t("path.criticalTag")}</Tag>
+                            )}
+                          </span>
+                          <strong role="cell">
+                            {current == null ? "—" : fmt(current)}
+                          </strong>
+                          <span role="cell">
+                            {required == null ? (
+                              "—"
+                            ) : (
+                              <>
+                                {fmt(required)}
+                                {current != null && required > current && (
+                                  <small>
+                                    {" "}
+                                    {t("path.gapAmount", {
+                                      count: fmt(required - current),
+                                    })}
+                                  </small>
+                                )}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {allSkillIds.map((skillId) => {
-                    const current = profile.skills[skillId] ?? 0;
-                    const required = targetProfile?.required_skills[skillId];
-                    const critical =
-                      targetProfile?.critical_skills.includes(skillId);
-                    return (
-                      <div
-                        className="skill-matrix-row"
-                        role="row"
-                        key={skillId}
-                      >
-                        <span role="cell">
-                          {skillName(skillId)}{" "}
-                          {critical && (
-                            <Tag tone="amber">{t("path.criticalTag")}</Tag>
-                          )}
-                        </span>
-                        <strong role="cell">{fmt(current)}</strong>
-                        <span role="cell">
-                          {required == null ? (
-                            "—"
-                          ) : (
-                            <>
-                              {fmt(required)}
-                              {required > current && (
-                                <small>
-                                  {" "}
-                                  {t("path.gapAmount", {
-                                    count: fmt(required - current),
-                                  })}
-                                </small>
-                              )}
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
                 </div>
               </Panel>
               <Panel title={t("path.goalAndTime")}>
