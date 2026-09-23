@@ -13,6 +13,18 @@ import {
 } from "../ui";
 
 const asText = (value: unknown) => (value == null ? "" : String(value));
+function importCounts(
+  value: unknown,
+): { employees?: number; history?: number } | null {
+  try {
+    const parsed: unknown = JSON.parse(asText(value));
+    return parsed && typeof parsed === "object"
+      ? (parsed as { employees?: number; history?: number })
+      : null;
+  } catch {
+    return null;
+  }
+}
 export function AuditView({
   session,
   revision,
@@ -20,9 +32,30 @@ export function AuditView({
   session: Session;
   revision: number;
 }) {
-  const { locale, t, enumText } = useI18n();
+  const { locale, t, catalogText } = useI18n();
   const load = useLoad(endpoint.audit, [revision, session.identity.id]);
+  const catalogLoad = useLoad(endpoint.catalog, []);
   const rows = load.data?.events ?? [];
+  const objectLabel = (row: Record<string, unknown>) => {
+    const target = asText(
+      row.object_title ??
+        row.object_id ??
+        row.entity_id ??
+        row.target_id ??
+        row.target,
+    );
+    if (target.startsWith("EV_")) {
+      const event = catalogLoad.data?.events.find(
+        (item) => item.event_id === target,
+      );
+      return event ? catalogText(target, "title", event.title) : target;
+    }
+    if (target === "mentor" || target === "project")
+      return catalogText(target, "title", target);
+    if (asText(row.action).startsWith("quest.")) return t("nav.quests");
+    if (target === "batch") return t("import.title");
+    return target;
+  };
   return (
     <>
       <Status loading={load.busy} error={load.error} retry={load.refresh} />
@@ -46,8 +79,15 @@ export function AuditView({
             {
               key: "actor",
               title: t("audit.actor"),
-              render: (row) =>
-                asText(row.actor_name ?? row.actor ?? row.actor_id),
+              render: (row) => {
+                const actor = asText(
+                  row.actor_name ?? row.actor ?? row.actor_id,
+                );
+                return (
+                  session.identities.find((item) => item.id === actor)?.label ??
+                  actor
+                );
+              },
             },
             {
               key: "action",
@@ -57,19 +97,15 @@ export function AuditView({
             {
               key: "object",
               title: t("audit.object"),
-              render: (row) =>
-                asText(
-                  row.object_title ??
-                    row.object_id ??
-                    row.entity_id ??
-                    row.target_id ??
-                    row.target,
-                ),
+              render: (row) => objectLabel(row),
             },
             {
               key: "reason",
               title: t("audit.reason"),
-              render: (row) => asText(row.reason),
+              render: (row) =>
+                asText(row.action) === "import.commit"
+                  ? t("import.applied")
+                  : asText(row.reason),
             },
             {
               key: "details",
@@ -78,6 +114,33 @@ export function AuditView({
                 <details>
                   <summary>{t("common.details")}</summary>
                   <dl className="audit-details">
+                    {asText(row.action) === "import.commit" &&
+                      importCounts(row.reason) && (
+                        <>
+                          <div>
+                            <dt>{t("import.newEmployees")}</dt>
+                            <dd>
+                              {formatNum(
+                                locale,
+                                importCounts(row.reason)?.employees,
+                              )}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>{t("import.historyRecords")}</dt>
+                            <dd>
+                              {formatNum(
+                                locale,
+                                importCounts(row.reason)?.history,
+                              )}
+                            </dd>
+                          </div>
+                        </>
+                      )}
+                    <div>
+                      <dt>{t("audit.techDetails")}</dt>
+                      <dd>{asText(row.target ?? row.id)}</dd>
+                    </div>
                     {Object.entries(row)
                       .filter(
                         ([key]) =>

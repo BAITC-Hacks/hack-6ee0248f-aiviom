@@ -2007,7 +2007,7 @@ export function formatDateFor(
   if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat(localeTags[locale], {
     day: "2-digit",
-    month: "short",
+    month: locale === "kk" ? "2-digit" : "short",
     year: "numeric",
     ...(dateOnly ? { timeZone: "UTC" } : {}),
     ...options,
@@ -2062,6 +2062,7 @@ export function catalogTextFor(
     "deliverables",
     "criteria",
     "reason",
+    "evidence",
   ].includes(field)
     ? (field as CatalogField)
     : "title";
