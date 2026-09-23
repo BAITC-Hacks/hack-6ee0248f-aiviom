@@ -192,12 +192,13 @@ a {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.locale-picker {
+.select-control {
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
-.locale-trigger {
+.select-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -209,20 +210,51 @@ a {
   min-width: 120px;
   padding: 8px 12px;
   color: var(--ink);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
 }
-.locale-options {
+.select-trigger span,
+.select-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.select-trigger svg,
+.select-option svg {
+  flex: none;
+}
+.select-popup {
   position: absolute;
   z-index: 80;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 168px;
+  min-width: max(100%, 168px);
+  max-width: min(360px, calc(100vw - 32px));
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--control-line);
   border-radius: 8px;
   box-shadow: 0 12px 32px rgba(19, 31, 67, 0.16);
 }
-.locale-option {
+.select-popup.above {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.select-options {
+  max-height: min(300px, 48vh);
+  overflow-y: auto;
+}
+.select-search {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+}
+.select-option {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -236,11 +268,22 @@ a {
   color: var(--ink);
   text-align: left;
 }
-.locale-option:hover,
-.locale-option:focus-visible,
-.locale-option.selected {
+.select-option:hover,
+.select-option:focus-visible,
+.select-option.selected {
   background: var(--accent-soft);
   color: var(--accent);
+}
+.select-empty {
+  display: block;
+  padding: 12px;
+  color: var(--muted);
+}
+.form-stack .select-control,
+.external-form .select-control,
+.form-stack .select-trigger,
+.external-form .select-trigger {
+  width: 100%;
 }
 .icon-button,
 .mobile-menu-button {
@@ -1303,9 +1346,7 @@ legend {
 }
 .external-form {
   display: grid;
-  grid-template-columns:
-    minmax(130px, 1fr) minmax(160px, 1.2fr)
-    110px 130px auto;
+  grid-template-columns: minmax(220px, 1.7fr) 110px 130px auto;
   align-items: end;
   gap: 12px;
   margin-top: 16px;
@@ -1580,7 +1621,7 @@ legend {
   .identity-chip {
     display: none;
   }
-  .locale-trigger {
+  .select-trigger {
     min-width: 0;
     font-size: 14px;
   }

@@ -3,6 +3,7 @@ import { ArrowRight, Search } from "lucide-react";
 import type { Session } from "../api";
 import { endpoint } from "../api";
 import { useI18n } from "../i18n";
+import { Select } from "../Select";
 import {
   Dialog,
   Empty,
@@ -49,7 +50,6 @@ export function People({
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(30);
-  const [activitySearch, setActivitySearch] = useState("");
   const [eventId, setEventId] = useState("");
   const [due, setDue] = useState("");
   const [reason, setReason] = useState("");
@@ -72,11 +72,7 @@ export function People({
       .includes(search.toLocaleLowerCase()),
   );
   const visible = filtered.slice(0, visibleCount);
-  const events = (catalogLoad.data?.events ?? []).filter((item) =>
-    `${item.title} ${catalogText(item.event_id, "title", item.title)}`
-      .toLocaleLowerCase()
-      .includes(activitySearch.toLocaleLowerCase()),
-  );
+  const events = catalogLoad.data?.events ?? [];
   const num = (value: number | null | undefined) => formatNum(locale, value);
   async function assign(event: React.FormEvent) {
     event.preventDefault();
@@ -89,7 +85,6 @@ export function People({
     if (result) {
       setEventId("");
       setDue("");
-      setActivitySearch("");
     }
     setBusy(false);
   }
@@ -375,30 +370,19 @@ export function People({
               <Panel title={t("people.assignActivity")}>
                 <form className="form-stack" onSubmit={assign}>
                   <label>
-                    {t("people.activitySearch")}
-                    <input
-                      type="search"
-                      value={activitySearch}
-                      onChange={(event) =>
-                        setActivitySearch(event.target.value)
-                      }
-                      placeholder={t("catalog.searchPlaceholder")}
-                    />
-                  </label>
-                  <label>
                     {t("common.activity")}
-                    <select
+                    <Select
+                      label={t("common.activity")}
                       value={eventId}
-                      onChange={(event) => setEventId(event.target.value)}
+                      onChange={setEventId}
                       required
-                    >
-                      <option value="">{t("common.select")}</option>
-                      {events.map((item) => (
-                        <option key={item.event_id} value={item.event_id}>
-                          {catalogText(item.event_id, "title", item.title)}
-                        </option>
-                      ))}
-                    </select>
+                      searchable
+                      placeholder={t("common.select")}
+                      options={events.map((item) => ({
+                        value: item.event_id,
+                        label: catalogText(item.event_id, "title", item.title),
+                      }))}
+                    />
                   </label>
                   <label>
                     {t("common.dueDate")}
@@ -409,7 +393,9 @@ export function People({
                       required
                     />
                   </label>
-                  <Submit busy={busy}>{t("people.assign")}</Submit>
+                  <Submit busy={busy} disabled={!eventId}>
+                    {t("people.assign")}
+                  </Submit>
                 </form>
               </Panel>
             )}

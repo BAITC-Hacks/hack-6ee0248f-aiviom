@@ -133,6 +133,8 @@ Controls have 8px corners; panels and dialogs have 12px corners. Only compact st
 
 Primary buttons are ultramarine with white text. Secondary buttons are white with a blue border and text. Buttons keep a 44px minimum height during loading. Fields and selects have white backgrounds, fine borders, and 8px corners. Keyboard focus uses a 3px ultramarine outline with offset. Hover transitions are 160ms where hover exists; reduced-motion preferences remove them. The current dialog has no entrance animation.
 
+All selection controls use the same bordered trigger and white popup. Long activity and skill lists add an in-popup search field; selected options carry a check and readable label. The popup supports arrows, Home, End, Enter, Escape, and outside-click dismissal.
+
 ### Panels and tags
 
 White panels have a fine border, 12px corners, and 24px padding that tightens to 18px on phones. Neutral and semantic tags include a short text label.

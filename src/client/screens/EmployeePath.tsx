@@ -15,6 +15,7 @@ import type {
   RecommendationResult,
 } from "../../shared/types";
 import { useI18n } from "../i18n";
+import { Select } from "../Select";
 import {
   Empty,
   Notice,
@@ -630,36 +631,34 @@ export function EmployeePath({
                 <form className="form-stack" onSubmit={saveGoal}>
                   <label>
                     {t("path.targetRole")}
-                    <select
+                    <Select
+                      label={t("path.targetRole")}
                       value={goalRole}
-                      onChange={(event) => setGoalRole(event.target.value)}
+                      onChange={setGoalRole}
                       required
-                    >
-                      {[
+                      options={[
                         ...new Set(
                           catalog?.role_profiles.map((item) => item.role) ?? [
                             profile.employee.role,
                           ],
                         ),
-                      ].map((role) => (
-                        <option key={role} value={role}>
-                          {catalogText(role, "title", role)}
-                        </option>
-                      ))}
-                    </select>
+                      ].map((role) => ({
+                        value: role,
+                        label: catalogText(role, "title", role),
+                      }))}
+                    />
                   </label>
                   <label>
                     {t("path.targetGrade")}
-                    <select
+                    <Select
+                      label={t("path.targetGrade")}
                       value={goalGrade}
-                      onChange={(event) => setGoalGrade(event.target.value)}
-                    >
-                      {gradeOrder.map((grade) => (
-                        <option key={grade} value={grade}>
-                          {enumText("grade", grade)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setGoalGrade}
+                      options={gradeOrder.map((grade) => ({
+                        value: grade,
+                        label: enumText("grade", grade),
+                      }))}
+                    />
                   </label>
                   <label>
                     {t("path.weeklyHours")}
@@ -674,7 +673,9 @@ export function EmployeePath({
                       required
                     />
                   </label>
-                  <Submit busy={saving}>{t("path.saveGoal")}</Submit>
+                  <Submit busy={saving} disabled={!goalRole || !goalGrade}>
+                    {t("path.saveGoal")}
+                  </Submit>
                 </form>
                 <p className="fine-print">{t("path.noPromotionGuarantee")}</p>
               </Panel>
@@ -715,22 +716,24 @@ export function EmployeePath({
                 >
                   <label>
                     {t("path.reason")}
-                    <select
+                    <Select
+                      label={t("path.reason")}
                       value={helpReason}
-                      onChange={(event) => setHelpReason(event.target.value)}
+                      onChange={setHelpReason}
                       required
-                    >
-                      <option value="">{t("common.choose")}</option>
-                      {["time", "format", "value", "familiar", "other"].map(
-                        (key) => (
-                          <option key={key} value={key}>
-                            {t(`help.${key}`)}
-                          </option>
-                        ),
-                      )}
-                    </select>
+                      placeholder={t("common.choose")}
+                      options={[
+                        "time",
+                        "format",
+                        "value",
+                        "familiar",
+                        "other",
+                      ].map((key) => ({ value: key, label: t(`help.${key}`) }))}
+                    />
                   </label>
-                  <Submit busy={saving}>{t("path.sendHelp")}</Submit>
+                  <Submit busy={saving} disabled={!helpReason}>
+                    {t("path.sendHelp")}
+                  </Submit>
                 </form>
                 <p className="fine-print">{t("path.helpExplain")}</p>
               </Panel>
