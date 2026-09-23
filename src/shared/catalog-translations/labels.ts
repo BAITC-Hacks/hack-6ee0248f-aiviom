@@ -52,7 +52,7 @@ export const demo: Record<string, Partial<Record<DemoField, { source: string; te
     evidence: {
       source: 'Демо-доказательство: подготовлен разбор решения и проверочный пример. Это синтетическая заявка для проверки workflow.',
       text: {
-        ru: 'Демо-доказательство: подготовлен разбор решения и проверочный пример. Это синтетическая заявка для проверки workflow.',
+        ru: 'Демо-доказательство: подготовлен разбор решения и проверочный пример. Это синтетическая заявка для проверки процесса согласования.',
         kk: 'Демо-дәлел: шешім талдауы мен тексеруге болатын мысал дайындалды. Бұл жұмыс үдерісін тексеруге арналған жасанды өтінім.',
         en: 'Demo evidence: a solution review and a test example have been prepared. This is a synthetic request for workflow verification.',
       },
