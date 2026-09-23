@@ -168,6 +168,7 @@ export interface RecommendationResult {
   mode: "live_ai" | "cached_live_ai" | "rules_fallback" | "unavailable";
   recommendations: Recommendation[];
   warnings: string[];
+  warning_codes?: string[];
   model: string | null;
   generated_at: string;
   latency_ms: number;
