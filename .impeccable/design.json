@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "Career Quest operating workspace",
+  "mode": "operate",
+  "colors": {
+    "ink": "#26332f",
+    "muted": "#66746e",
+    "page": "#f5f7f5",
+    "surface": "#ffffff",
+    "sidebar": "#edf2ee",
+    "border": "#dfe6e1",
+    "primary": "#176b4a",
+    "successSurface": "#e7f3ec",
+    "warning": "#8d6122",
+    "warningSurface": "#fcf4e7",
+    "error": "#ad4140",
+    "errorSurface": "#fff0ef"
+  },
+  "typography": {"family": "Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif", "numerals": "tabular-nums"},
+  "radii": {"control": 9, "panel": 14},
+  "layout": {"sidebarWidth": 246, "contentMaxWidth": 1500, "mobileNavBreakpoint": 830}
+}
