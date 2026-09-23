@@ -244,10 +244,17 @@ function comparison(facts: RecommendationFacts, eventId: string, alternativeId: 
   }[locale];
   const selected = facts.candidates.find(c => c.id === eventId)!;
   const alternative = facts.candidates.find(c => c.id === alternativeId)!;
+  const number = (value: number) => new Intl.NumberFormat(localeTag(locale), { maximumFractionDigits: 1 }).format(value);
+  const negative = (candidate: typeof selected) => candidate.relevant_history.dropped + candidate.relevant_history.no_show + candidate.relevant_history.declined;
+  const target = `${number(alternative.target_gain)}/${number(selected.target_gain)}`;
+  const critical = `${number(alternative.critical_gain)}/${number(selected.critical_gain)}`;
+  const hours = `${number(alternative.hours)}/${number(selected.hours)}`;
+  const history = `${alternative.relevant_history.completed}:${negative(alternative)}/${selected.relevant_history.completed}:${negative(selected)}`;
+  const equalGain = alternative.target_gain === selected.target_gain && alternative.critical_gain === selected.critical_gain;
   return {
-    ru: `«${alternative.title}»: вклад в цель ${alternative.target_gain} против ${selected.target_gain}, в критические навыки ${alternative.critical_gain} против ${selected.critical_gain}.`,
-    kk: `«${alternative.title}»: мақсатқа үлесі ${alternative.target_gain} және ${selected.target_gain}, маңызды дағдыларға үлесі ${alternative.critical_gain} және ${selected.critical_gain}.`,
-    en: `“${alternative.title}”: target contribution ${alternative.target_gain} versus ${selected.target_gain}, critical skill contribution ${alternative.critical_gain} versus ${selected.critical_gain}.`,
+    ru: `«${alternative.title}»: альтернатива/выбор — вклад в цель ${target}, критический вклад ${critical}, часы ${hours}; история завершений/пропусков, прекращений и отказов ${history}.${equalGain ? ' Вклад в цель и критические навыки равен.' : ''}`,
+    kk: `«${alternative.title}»: балама/таңдау — мақсатқа үлес ${target}, маңызды дағдыға үлес ${critical}, сағат ${hours}; тарихта аяқтау/қатыспау, тоқтату және бас тарту ${history}.${equalGain ? ' Мақсатқа және маңызды дағдыларға үлес тең.' : ''}`,
+    en: `“${alternative.title}”: alternative/choice — target gain ${target}, critical gain ${critical}, hours ${hours}; history completions/drops, no-shows and declines ${history}.${equalGain ? ' Target and critical gains are equal.' : ''}`,
   }[locale];
 }
 

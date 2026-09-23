@@ -161,6 +161,30 @@ test('participation priority rejects a negative history balance and recent statu
   assert.deepEqual(result.warning_codes, ['AI_INVALID_OUTPUT']);
 });
 
+test('alternative comparison uses actual gains, hours and related-history counts in every locale', async () => {
+  const p = profile();
+  p.candidates[0].event.duration_hours = 2;
+  p.candidates[1].event.duration_hours = 5;
+  p.candidates[1].U = 2;
+  p.candidates[1].K = 0;
+  for (const [i, status] of ['completed', 'dropped', 'no_show', 'declined'] .entries()) p.history.push({ record_id: `comparison-${i}`, employee_id: 'emp-1', event_id: 'past', date: `2026-09-0${i + 1}`, due_date: null, status, completion_pct: status === 'completed' ? 100 : status === 'dropped' ? 10 : 0, score: null, feedback_rating: null, assigned_by: 'self' });
+  const recommender = createRecommender({ async choose(facts) { const output = modelChoice(facts); output.recommendations[0].priority_code = 'target_gap'; return { output }; } });
+  for (const locale of ['ru', 'kk', 'en'] as const) {
+    const result = await recommender(p, { apiKey: 'test', locale, catalogEvents: [event('past')] });
+    assert.equal(result.mode, 'live_ai');
+    const comparison = result.recommendations[0].alternative_reason;
+    assert.match(comparison, /1\/2/); // alternative/choice target gain
+    assert.match(comparison, /1\/0/); // alternative/choice critical gain
+    assert.match(comparison, /2\/5/); // alternative/choice hours
+    assert.match(comparison, /1:3\/1:3/); // full related history for both candidates
+    assert.equal(comparison.includes('equal') || comparison.includes('равен') || comparison.includes('тең'), false);
+  }
+  p.candidates[1].U = 1;
+  p.candidates[1].K = 1;
+  const equal = await recommender(p, { apiKey: 'test', locale: 'en', catalogEvents: [event('past')] });
+  assert.match(equal.recommendations[0].alternative_reason, /Target and critical gains are equal/);
+});
+
 test('invalid IDs, missing factor evidence, and prompt injection fail closed', async () => {
   for (const alter of [
     (v: ReturnType<typeof modelChoice>) => { v.recommendations[0].event_id = 'invented'; },
