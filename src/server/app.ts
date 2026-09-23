@@ -348,10 +348,11 @@ route("post", "/api/employees/:id/recommendations", async (req, res) => {
         apiKey: process.env.OPENAI_API_KEY,
         model,
         locale,
+        catalogEvents: s.dataset.events,
         workspaceVersion: se.workspace_id + ":" + s.version,
         beforeRequest: () => { reservation = reserveAi(se.workspace_id, model); },
       })
-    : await judgeRecommendation(p, se.workspace_id, locale);
+    : await judgeRecommendation(p, se.workspace_id, locale, s.dataset.events);
   if (reservation) settleAi(reservation, result);
   return result;
 });
@@ -411,6 +412,7 @@ route("post", "/api/judge/recommend", async (req, res) => {
     model,
     locale,
     workspaceVersion: se.workspace_id,
+    catalogEvents: base.events,
     timeoutMs: 8000,
     beforeRequest: () => { reservation = reserveAi(se.workspace_id, model); },
   });

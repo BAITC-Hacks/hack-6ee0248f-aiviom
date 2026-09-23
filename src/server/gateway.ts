@@ -1,4 +1,4 @@
-import type { Profile, RecommendationResult } from "../shared/types.js";
+import type { Event, Profile, RecommendationResult } from "../shared/types.js";
 import { recommend } from "../ai/index.js";
 import { normalizeLocale, type Locale } from '../shared/locale.js';
 import { serverMessage } from '../shared/server-i18n.js';
@@ -8,11 +8,12 @@ export async function judgeRecommendation(
   profile: Profile,
   workspace = "standalone",
   requestedLocale: Locale = 'ru',
+  catalogEvents?: Event[],
 ): Promise<RecommendationResult> {
   const locale = normalizeLocale(requestedLocale);
   const configured = process.env.JUDGE_GATEWAY_URL;
   if (configured === "off" || process.env.AI_MODE === "offline")
-    return recommend(profile, { locale });
+    return recommend(profile, { locale, catalogEvents });
   const base = configured || defaultUrl;
   let gatewayCookie = gatewayCookies.get(workspace) || "";
   const deadline = Date.now() + 9500;
@@ -64,7 +65,7 @@ export async function judgeRecommendation(
       throw new Error("Gateway facts mismatch");
     return result;
   } catch {
-    const result = await recommend(profile, { locale });
+    const result = await recommend(profile, { locale, catalogEvents });
     return {
       ...result,
       warnings: [

@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "verify:source": "node scripts/verify-source.mjs",
-    "smoke:judge": "tsx scripts/judge-smoke.ts"
+    "smoke:judge": "tsx scripts/judge-smoke.ts",
+    "smoke:acceptance": "tsx scripts/acceptance-journey.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.7.0",
