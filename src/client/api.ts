@@ -24,9 +24,9 @@ export interface Rewards { balance: number; earned: number; items: { id: string;
 export interface ExternalResults { mode: 'live_search'|'unavailable'; opportunities: { title:string; url:string; excerpt:string; checked_at:string; cost:'unknown'; duration:'unknown'; company_approved:false; skill_gain:null }[]; warning:string }
 export type { Candidate, Employee, Event, Quest, RecommendationResult, Roadmap };
 
-function errorMessage(value: unknown, status: number): string {
+function errorMessage(value: unknown, status: number, locale: import('../shared/locale').Locale): string {
   if (typeof value === 'object' && value !== null && 'user_message' in value && typeof value.user_message === 'string') return value.user_message;
-  return `Запрос не выполнен (${status}). Повторите попытку.`;
+  return ({ru: `Запрос не выполнен (${status}). Повторите попытку.`, kk: `Сұрау орындалмады (${status}). Қайталап көріңіз.`, en: `Request failed (${status}). Please try again.`})[locale];
 }
 
 let requestLocale: import('../shared/locale').Locale = 'ru';
@@ -37,16 +37,20 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+  const locale = requestLocale;
   const response = await fetch(path, {
     method,
     credentials: 'same-origin',
-    headers: { 'Accept-Language': requestLocale, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    headers: { 'Accept-Language': locale, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : JSON.stringify(body),
+  }).catch(() => {
+    const message = { ru: 'Не удалось подключиться. Проверьте соединение и повторите попытку.', kk: 'Қосылу мүмкін болмады. Байланысты тексеріп, қайталап көріңіз.', en: 'Unable to connect. Check your connection and try again.' }[locale];
+    throw new ApiError(message, 'NETWORK');
   });
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const error = payload as { code?: string; message_key?: string; params?: Record<string, string | number>; request_id?: string } | null;
-    throw new ApiError(errorMessage(payload, response.status), error?.code ?? 'REQUEST_FAILED', error?.message_key, error?.params, error?.request_id);
+    throw new ApiError(errorMessage(payload, response.status, locale), error?.code ?? 'REQUEST_FAILED', error?.message_key, error?.params, error?.request_id);
   }
   return payload as T;
 }
