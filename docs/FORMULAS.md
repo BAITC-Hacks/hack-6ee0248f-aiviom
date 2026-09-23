@@ -28,7 +28,7 @@ Employee input accepts a single profile, array or `{employees:[...]}` wrapper. H
 
 ## Analytics shape
 
-`buildAnalytics(dataset, profiles, asOf)` takes **already scoped** profiles; the caller enforces workspace and RBAC. It returns JSON-ready aggregates without names or employee rankings:
+`buildAnalytics(dataset, profiles, asOf)` takes **already scoped** profiles; the caller enforces workspace and RBAC. It returns JSON-ready aggregates plus scoped drill-down records. The HR report contains employee IDs/names for concrete blockers and open assignments, but never ranks employees:
 
 | Key | Fields | Denominator |
 |---|---|---|
@@ -43,6 +43,9 @@ Employee input accepts a single profile, array or `{employees:[...]}` wrapper. H
 | `catalog_gaps[]` | `skill_id`, `name`, `employees` | Open skills without currently eligible direct coverage |
 | `event_groups[]` | `event_id`, `title`, `employees` | Unique profiles for whom event is eligible and useful |
 | `on_time` | `eligible`, `on_time`, `rate_pct` | Completed records with **exact** `completed_at` and `due_date` |
+| `no_next_employees[]` | `employee_id`, `full_name`, `reason` | Scoped profiles with a concrete next-step blocker |
+| `mandatory_open[]` | `employee_id`, `event_id`, `title`, `due_date`, `status` | Scoped non-completed mandatory records |
+| `participation[]` | `event_id`, `title`, `total`, `completed`, `by_status` | Scoped history records per activity |
 
 All zero-denominator rates are `null`. The caller must select the report period/cohort; the default here is all records through `as_of`. `catalog_gaps` is a direct-coverage signal, not a proof that no prerequisite path exists. `caveats` in the response state those limitations.
 

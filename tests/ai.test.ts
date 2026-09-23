@@ -176,3 +176,14 @@ test('external search forwards controlled metadata only', async () => {
   assert.equal(result.mode, 'live_search');
   assert.equal(result.opportunities.length, 0);
 });
+
+test('budget reservation only runs for real uncached provider calls', async () => {
+  let reservations=0;
+  const rec=createRecommender({async choose(facts){return {output:modelChoice(facts)};}});
+  const options={apiKey:'test',beforeRequest:()=>{reservations++;}};
+  assert.equal((await rec({...profile(),goal:null},options)).mode,'unavailable');
+  assert.equal(reservations,0);
+  assert.equal((await rec(profile(),options)).mode,'live_ai');
+  assert.equal((await rec(profile(),options)).mode,'cached_live_ai');
+  assert.equal(reservations,1);
+});

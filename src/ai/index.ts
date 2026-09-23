@@ -18,6 +18,8 @@ export interface RecommendOptions {
   /** Optional server-owned workspace version; full profile content is hashed regardless. */
   workspaceVersion?: string;
   timeoutMs?: number;
+  /** Server-only budget reservation, invoked only for a real uncached provider request. */
+  beforeRequest?: () => void;
 }
 
 export interface ProviderResult {
@@ -225,6 +227,7 @@ export function createRecommender(provider: RecommendationProvider = sdkProvider
     }
     const work = (async (): Promise<RecommendationResult> => {
       try {
+        options.beforeRequest?.();
         const response = await provider.choose(facts, model, options.apiKey!, Math.min(Math.max(options.timeoutMs ?? 9300, 1000), 9500));
         let checked: ReturnType<typeof validate>;
         try { checked = validate(response.output, facts); } catch { throw new AIOutputError('Invalid AI recommendation'); }

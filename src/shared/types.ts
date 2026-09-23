@@ -53,6 +53,7 @@ export interface Event {
   upcoming_sessions: string[];
 }
 export interface History {
+  created_at?: string;
   record_id: string;
   employee_id: string;
   event_id: string;
@@ -67,6 +68,7 @@ export interface History {
   completion_time_quality?: "proxy" | "exact";
 }
 export interface Credit {
+  created_at?: string;
   credit_id: string;
   employee_id: string;
   completed_at: string;
@@ -138,6 +140,7 @@ export interface Milestone {
   event_ids: string[];
 }
 export interface Roadmap {
+  alternatives?: {quest_id:string;title:string;status:string;skill_ids:string[]}[];
   milestones: Milestone[];
   steps: {
     event_id: string;

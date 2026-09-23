@@ -40,7 +40,7 @@ export function complete(
         (h) =>
           h.employee_id === input.employee_id &&
           h.event_id === event.event_id &&
-          h.status !== "completed",
+          ["in_progress", "overdue"].includes(h.status),
       ),
       "Нет обязательного назначения на эту активность",
     );
@@ -77,16 +77,18 @@ export function complete(
     (h) =>
       h.employee_id === input.employee_id &&
       h.event_id === event.event_id &&
-      h.status !== "completed" &&
+      ["in_progress", "overdue"].includes(h.status) &&
       (event.event_id !== "EV_036" || h.date === input.session),
   );
   if (inProgress) {
+    if (event.format !== "self_paced") inProgress.date = input.session!;
     inProgress.status = "completed";
     inProgress.completion_pct = 100;
     inProgress.completed_at = s.as_of;
     inProgress.completion_time_quality = "exact";
   } else
     s.dataset.history.push({
+      created_at: stamp(),
       record_id: "APP_" + randomUUID(),
       employee_id: input.employee_id,
       event_id: event.event_id,
@@ -306,6 +308,7 @@ export function acceptQuest(
   if (!guard(workspace, `quest:${id}`)) return q;
   const before = profile(s, q.employee_id);
   s.credits.push({
+    created_at: stamp(),
     credit_id: "C_" + id,
     employee_id: q.employee_id,
     completed_at: s.as_of,

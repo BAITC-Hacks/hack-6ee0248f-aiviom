@@ -304,7 +304,7 @@ route("get", "/api/employees/:id/roadmap", (req, res) => {
   const { state: s, actor: a } = context(res);
   const id = param(req);
   scope(s, a, id);
-  return buildRoadmap(s.dataset, profile(s, id), s.plans[id]?.weekly_budget);
+  return buildRoadmap(s.dataset, profile(s, id), s.plans[id]?.weekly_budget, s.quests);
 });
 route("post", "/api/employees/:id/preview", (req, res) => {
   const { state: s, actor: a } = context(res);
@@ -323,32 +323,22 @@ route("post", "/api/employees/:id/recommendations", async (req, res) => {
   const p = profile(s, id);
   const model = process.env.OPENAI_MODEL || "gpt-5.4-mini";
   let reservation: string | undefined;
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      reservation = reserveAi(se.workspace_id, model);
-    } catch (e) {
-      if (e instanceof AppError) {
-        const fallback = await recommend(p);
-        return { ...fallback, warnings: [e.message, ...fallback.warnings] };
-      }
-      throw e;
-    }
-  }
-  const result = process.env.OPENAI_API_KEY
+  const result = process.env.OPENAI_API_KEY && process.env.AI_MODE !== "offline"
     ? await recommend(p, {
         apiKey: process.env.OPENAI_API_KEY,
         model,
         locale: "ru",
         workspaceVersion: se.workspace_id + ":" + s.version,
+        beforeRequest: () => { reservation = reserveAi(se.workspace_id, model); },
       })
-    : await judgeRecommendation(p);
+    : await judgeRecommendation(p, se.workspace_id);
   if (reservation) settleAi(reservation, result);
   return result;
 });
 route("post", "/api/judge/recommend", async (req, res) => {
   const { se } = context(res);
   requireThat(
-    process.env.OPENAI_API_KEY,
+    process.env.OPENAI_API_KEY && process.env.AI_MODE !== "offline",
     "Live AI на gateway не настроен",
     503,
     "AI_UNAVAILABLE",
@@ -385,7 +375,7 @@ route("post", "/api/judge/recommend", async (req, res) => {
   base.employees.push(...validation.employees);
   base.history.push(...validation.history);
   requireThat(
-    input.as_of >= "2026-10-01" && input.as_of <= "2026-12-31",
+    validDate(input.as_of) && input.as_of >= "2026-10-01" && input.as_of <= "2026-12-31",
     "Некорректная дата анализа",
   );
   const { buildProfile } = await import("../domain/index.js");
@@ -394,14 +384,16 @@ route("post", "/api/judge/recommend", async (req, res) => {
     goal: input.goal,
   });
   const model = process.env.OPENAI_MODEL || "gpt-5.4-mini";
-  const reservation = reserveAi(se.workspace_id, model);
+  let reservation: string | undefined;
   const result = await recommend(p, {
     apiKey: process.env.OPENAI_API_KEY,
     model,
     locale: "ru",
     workspaceVersion: se.workspace_id,
+    timeoutMs: 8000,
+    beforeRequest: () => { reservation = reserveAi(se.workspace_id, model); },
   });
-  settleAi(reservation, result);
+  if (reservation) settleAi(reservation, result);
   return result;
 });
 route("post", "/api/external/search", async (req, res) => {
@@ -418,14 +410,14 @@ route("post", "/api/external/search", async (req, res) => {
   const skill = s.dataset.skills.find((k) => k.skill_id === input.skill_id);
   requireThat(skill, "Навык не найден");
   let reservation: string | undefined;
-  if (process.env.OPENAI_API_KEY)
+  if (process.env.OPENAI_API_KEY && process.env.AI_MODE !== "offline")
     reservation = reserveAi(
       se.workspace_id,
       process.env.OPENAI_MODEL || "gpt-5.4-mini",
     );
   const result = await searchExternalOpportunities(
     { ...input, skill_name: skill.name },
-    { apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL },
+    { apiKey: process.env.AI_MODE === "offline" ? undefined : process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL },
   );
   if (reservation) settleAi(reservation, { mode: result.mode });
   return result;
@@ -729,6 +721,13 @@ route("post", "/api/import/commit", (req, res) =>
       };
       if (!s.advisor_assignments.advisor.includes(e.employee_id))
         s.advisor_assignments.advisor.push(e.employee_id);
+    }
+    // Imported history is a baseline, never a source of retroactive reward XP.
+    for (const id of new Set(result.history.map(h => h.employee_id))) {
+      const current = profile(s, id).skills;
+      const maximum = s.lifetime_max[id] ??= {};
+      for (const [skill, level] of Object.entries(current))
+        maximum[skill] = Math.max(maximum[skill] ?? 0, level);
     }
     audit(s, a.id, "import.commit", "batch", JSON.stringify(result.counts));
     return { ok: true, counts: result.counts, warnings: result.warnings };

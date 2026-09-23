@@ -1,19 +1,23 @@
-import type { Dataset, Event, Gap, Levels, Milestone, Profile, Roadmap } from '../shared/types.js';
+import type { Dataset, Event, Gap, Levels, Milestone, Profile, Roadmap, Quest } from '../shared/types.js';
 import { applyGains, audienceAllows, eventRepeatBlocked, gapsFor, nextSession, prerequisitesMet } from './calculation.js';
 
 interface State { skills: Levels; path: { event: Event; session: string | null }[]; after: string; hours: number; gap: number; critical: number }
 
-export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: number): Roadmap {
+export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: number, quests: Quest[] = []): Roadmap {
   const target = profile.goal ? dataset.role_profiles.find(p => p.role === profile.goal?.target_role && p.grade === profile.goal?.target_grade) ?? null : null;
   const catalog = dataset.events.filter(e => !e.mandatory && audienceAllows(e, profile.employee));
   const initial = gapsFor(dataset, profile.skills, target);
+  const alternatives = quests.filter(q => q.employee_id === profile.employee.employee_id && q.advisor_approved && !['accepted','rejected'].includes(q.status)).map(q => {
+    const deltas = applyGains(profile.skills, q.gains).deltas;
+    return {quest_id:q.id, title:q.title, status:q.status, skill_ids:initial.gaps.filter(g=>g.gap>0&&(deltas[g.skill_id]??0)>0).map(g=>g.skill_id)};
+  }).filter(q=>q.skill_ids.length>0);
   const milestoneEvents = (skillId: string) => profile.candidates.filter(c => !c.reasons.includes('already_completed') && !c.reasons.includes('audience_blocked') && (c.deltas[skillId] ?? 0) > 0).map(c => c.event.event_id);
   const milestones: Milestone[] = initial.gaps.map(g => ({
     skill_id: g.skill_id, name: g.name, current: g.current, required: g.required, critical: g.critical,
     status: g.gap === 0 ? 'met' : profile.candidates.some(c => c.eligible && (c.deltas[g.skill_id] ?? 0) > 0) ? 'available' : 'blocked',
     event_ids: milestoneEvents(g.skill_id),
   }));
-  if (!target || initial.total_gap === 0) return { milestones, steps: [], remaining_gaps: initial.gaps.filter(g => g.gap > 0), search_limited: false, plan_hours: 0, weeks_lower_bound: weeklyBudget && weeklyBudget > 0 ? 0 : null };
+  if (!target || initial.total_gap === 0) return { alternatives, milestones, steps: [], remaining_gaps: initial.gaps.filter(g => g.gap > 0), search_limited: false, plan_hours: 0, weeks_lower_bound: weeklyBudget && weeklyBudget > 0 ? 0 : null };
 
   const metric = (skills: Levels) => gapsFor(dataset, skills, target);
   const score = (s: State) => s.gap * 100 + s.critical * 30 + s.hours * 0.05 + s.path.length * 0.01;
@@ -75,6 +79,6 @@ export function buildRoadmap(dataset: Dataset, profile: Profile, weeklyBudget?: 
   const blocked = profile.candidates.filter(c => !selectedIds.has(c.event.event_id) && !c.eligible && c.U > 0)
     .slice(0, 5).map(c => ({ event_id: c.event.event_id, session: c.session, status: 'blocked', reason: c.reasons.join(', ') }));
   const remaining_gaps: Gap[] = metric(best.skills).gaps.filter(g => g.gap > 0);
-  return { milestones, steps: [...selected, ...blocked], remaining_gaps, search_limited,
+  return { alternatives, milestones, steps: [...selected, ...blocked], remaining_gaps, search_limited,
     plan_hours: best.hours, weeks_lower_bound: weeklyBudget && weeklyBudget > 0 ? Math.ceil(best.hours / weeklyBudget) : null };
 }

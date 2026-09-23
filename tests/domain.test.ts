@@ -168,3 +168,13 @@ test('milestone availability excludes completed courses and cap below current sk
  assert.equal(road.milestones.find(m=>m.skill_id==='A')?.status,'blocked');
  assert.deepEqual(road.milestones.find(m=>m.skill_id==='A')?.event_ids,[]);
 });
+
+test('approved quest is a visible alternative but does not grant milestone credit', () => {
+  const d = fixture();
+  const p = buildProfile(d,'E1');
+  const before = JSON.stringify(p);
+  const roadmap = buildRoadmap(d,p,4,[{id:'Q1',employee_id:'E1',title:'Practice',status:'ready',advisor_approved:true,gains:[{skill_id:'B',gain:1,max_level:5}]} as any]);
+  assert.deepEqual(roadmap.alternatives?.[0].skill_ids,['B']);
+  assert.equal(roadmap.milestones.find(m=>m.skill_id==='B')?.current,0);
+  assert.equal(JSON.stringify(p),before);
+});

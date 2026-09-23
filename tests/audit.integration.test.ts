@@ -284,3 +284,31 @@ test('evidence revision loop preserves approval and grants credit only after acc
   const accepted = await c.ok(`/api/employees/${id}/profile`);
   assert.ok(accepted.xp>before.xp);
 });
+
+test('a new completion preserves past declined history and imported gains do not earn later XP', async () => {
+  const c = client();
+  const session = await c.ok('/api/session');
+  const id = session.identity.employee_id;
+  const before = await c.ok(`/api/employees/${id}/profile`);
+  const event = before.candidates.find((x:any)=>x.eligible && x.event.format==='self_paced' && x.U>0).event;
+  await c.switchTo('hr');
+  await c.ok('/api/import/commit','POST',{history:[{record_id:'AUDIT_DECLINED',employee_id:id,event_id:event.event_id,date:'2026-09-30',due_date:null,status:'declined',completion_pct:0,score:null,feedback_rating:null,assigned_by:'self'}]});
+  await c.switchTo('advisor');
+  await c.ok('/api/completions','POST',{employee_id:id,event_id:event.event_id,evidence:'Verified new attempt'});
+  const after = await c.ok(`/api/employees/${id}/profile`);
+  assert.equal(after.history.find((h:any)=>h.record_id==='AUDIT_DECLINED').status,'declined');
+  assert.ok(after.history.some((h:any)=>h.event_id===event.event_id&&h.status==='completed'));
+
+  const d = client();
+  const se = await d.ok('/api/session');
+  const p = await d.ok(`/api/employees/${se.identity.employee_id}/profile`);
+  const q = (await d.ok('/api/side-quests')).quests.find((q:any)=>q.id==='DEMO_Q_EVIDENCE');
+  const imported = p.candidates.find((x:any)=>!x.event.mandatory && x.deltas[q.gains[0].skill_id]>0 && !p.history.some((h:any)=>h.event_id===x.event.event_id&&h.status==='completed'));
+  assert.ok(imported);
+  await d.switchTo('hr');
+  await d.ok('/api/import/commit','POST',{history:[{record_id:'AUDIT_COMPLETED_IMPORT',employee_id:se.identity.employee_id,event_id:imported.event.event_id,date:'2026-10-01',completed_at:'2026-10-01',due_date:null,status:'completed',completion_pct:100,score:null,feedback_rating:null,assigned_by:'self'}]});
+  assert.equal((await d.ok(`/api/employees/${se.identity.employee_id}/profile`)).xp,0);
+  await d.switchTo('advisor');
+  await d.ok('/api/side-quests/DEMO_Q_EVIDENCE/accept','POST',{reason:'Verified independent result'});
+  assert.equal((await d.ok(`/api/employees/${se.identity.employee_id}/profile`)).xp,20);
+});
