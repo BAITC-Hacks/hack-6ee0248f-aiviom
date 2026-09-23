@@ -1,9 +1,9 @@
 {
-  "document_type": "atlas_release_candidate_evidence",
+  "document_type": "verified_atlas_release_evidence",
   "project": "Career Quest",
   "team": "AIVIOM",
   "repository": "https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom",
-  "branch": "release/atlas-rebrand",
+  "branch": "main",
   "tested_application_commit": "6293c601fa73d20bcd663d8b02ba8bff6b56381c",
   "submission": {
     "tag": "submission-2026-09-23",
@@ -37,28 +37,44 @@
       "kk": 3354,
       "en": 2835
     },
-    "gateway_scope": "local candidate gateway, no client key; production Atlas pending",
+    "gateway_scope": "Production HTTPS gateway verified in all three locales and with unchanged submission client",
     "dependency_audit": "0 vulnerabilities",
     "secret_pattern_scan": "No high-confidence tracked matches; no private spec, DB or log tracked",
     "reduced_motion": "PASS built-in browser emulation; transitions suppressed; reset",
-    "design_confirmation": "PASS fresh independent reviewer, final material fixes confirmed; no new material findings"
+    "design_confirmation": "PASS fresh independent reviewer, final material fixes confirmed; no new material findings",
+    "production_live_ai_ms": {
+      "ru": 5847,
+      "kk": 2703,
+      "en": 2370
+    },
+    "old_submission_client": {
+      "mode": "live_ai",
+      "latency_ms": 4747,
+      "local_key": false,
+      "accept_language_header": false
+    },
+    "hosted_smoke": "PASS HTTPS health, five roles, RBAC, import and repeated import, logo/font assets, RU/KK/EN UI, console clean"
   },
   "deployment": {
-    "status": "PENDING_POST_HACKATHON",
-    "not_before_utc": "2026-09-23T13:00:00Z",
+    "status": "LIVE",
     "domain": "https://career.aiviom.ai",
     "ip": "34.165.120.4",
     "compose_project": "career-quest",
     "port": "127.0.0.1:3500",
     "previous_image": "career-quest:1c397c1f0c10652707e34d9d0f3d4776eda0e97b",
-    "scope": "Career Quest web only; preserve volume and previous image; no Caddy changes"
+    "scope": "Career Quest web only; preserve volume and previous image; no Caddy changes",
+    "owner_override_utc": "2026-09-23T11:18:00Z",
+    "first_verified_rollout_commit": "f68be3bbe4aa66cb1a9e822ace3bb03ecfc37da8",
+    "runtime_version_source": "https://career.aiviom.ai/health",
+    "backup": "/home/alex/career-quest/backups/pre-atlas-f68be3b-20260923T1120/career-quest.sqlite",
+    "backup_sha256": "1807af3e86ee6cca427e83a3e26896a0f3a963279746d9e0f1b0ca83ae46f2ca"
   },
   "limitations": [
     "No physical phone, Safari or screen reader verification",
     "Kazakh reviewed by agent, not certified by native speaker",
     "Actual 200% browser zoom not verified",
-    "Production Atlas HTTPS and old-client live gateway smoke pending activation",
     "New external web search not re-run in this release; provider tests cover locale and source validation",
     "Demo role switching, no corporate SSO; finite API budget and network dependence"
-  ]
+  ],
+  "release_ref": "atlas-2026-09-23"
 }

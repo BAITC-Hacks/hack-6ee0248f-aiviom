@@ -11,7 +11,7 @@
 - Browser actions: recommendation fallback honestly labeled, preview, plan addition, advisor acceptance of synthetic evidence, updated skill/balance, invalid import, replacement invalidating old preview, valid import application. Escape closed More and restored trigger focus.
 - Independent design review requested a final fix batch for tablet project detail, control border contrast, mobile text size and stale brand documentation. The owner additionally requested a styled opening language list. Final confirmation: PASS. Tablet detail spans 720px; 320px role popup stays inside the dialog, scrolls internally and selects the last option with End/Enter. No console warnings/errors.
 - Styled selector checks: Home/Enter/Escape, search with Arrow/Enter, Tab/Shift+Tab exit and 320px popup bounds passed. Reduced-motion emulation suppressed transitions and was reset.
-- Boundaries: actual 200% browser zoom was not verified; no physical phone/Safari, screen-reader or native Kazakh reviewer certification. Three-language production gateway and post-deploy HTTPS checks await the separate post-hackathon rollout.
+- Boundaries: actual 200% browser zoom was not verified; no physical phone/Safari, screen-reader or native Kazakh reviewer certification. Production checks passed after the owner authorized immediate release.
 
 ## Historical submission checks
 
@@ -26,3 +26,11 @@
 |T20|Source manifest, dependency audit, secret-pattern scan, remote SHA|PASS on c2c84d7: zero dependency vulnerabilities and no high-confidence secret matches. HTTPS health and hosted UI PASS; final documentation-only SHA checked at publication|
 
 Final audit additions test approved quest alternatives without gain, preserved declined records and no retroactive reward after historical import. Backend test fixtures use isolated disposable databases and no paid API. For this historical submission, full kk/en localization was not implemented. Atlas adds RU/KK/EN; corporate SSO and configurable HR catalog/reward/advisor administration remain outside this release. Demo policies are explicit.
+
+## Production Atlas activation
+
+Owner requested immediate release at 11:18 UTC on 2026-09-23, superseding the scheduled time. First artifact f68be3b passed HTTPS health, all five role scopes, denied employee access to HR (localized KK 403), new arbitrary-ID import and repeated no-op import, font and logo assets. SQLite backup passed quick_check; existing data volume was preserved.
+
+Hosted gateway real AI: RU 5847ms, KK 2703ms, EN 2370ms; each returned its requested locale, four checked factor groups and valid alternatives. The unchanged submission client, without a local key or Accept-Language header, received live AI in 4747ms. These are single calls, not p95. Built-in Browser confirmed RU/KK/EN, styled language popup, retained existing session/profile and no console warnings/errors.
+
+Final release tag `atlas-2026-09-23` includes these documentation updates with the same accepted application code. Previous submission tag and image remain available; Caddy and foreign containers were not modified.

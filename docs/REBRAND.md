@@ -1,6 +1,6 @@
 # Atlas rebranding release
 
-This is a separate release, not a retroactive hackathon submission. Preserved submission: tag `submission-2026-09-23`, SHA `1c397c1f0c10652707e34d9d0f3d4776eda0e97b`. Integration branch: `release/atlas-rebrand`.
+This is a separate release, not a retroactive hackathon submission. Preserved submission: tag `submission-2026-09-23`, SHA `1c397c1f0c10652707e34d9d0f3d4776eda0e97b`. Integrated into `main`; published release tag: `atlas-2026-09-23`.
 
 ## Direction decision
 
@@ -32,7 +32,7 @@ The seven additional skills informed the same acceptance pass: typography (local
 
 Final bounded independent review: **PASS** on application `6293c60`. The tablet detail uses full width, mobile text is readable, control borders exceed 3:1, and the 320px demo-role popup keeps its last option reachable with scrolling and End/Enter. Browser console warnings/errors were empty. A final clean-clone repeat on this exact application SHA passed all 57 tests, typecheck, build and source verification.
 
-Production activation was authorized immediately by the owner at 11:18 UTC on 2026-09-23, superseding the planned post-hackathon time. The submission tag remains unchanged; production HTTPS and backward-compatible gateway smoke will be repeated at activation. See DEPLOY.md.
+Production activation was authorized immediately by the owner at 11:18 UTC on 2026-09-23, superseding the planned post-hackathon time. The submission tag remains unchanged. Production HTTPS and backward-compatible gateway smoke passed; the hosted interface was checked in all three languages without console warnings or errors. See DEPLOY.md.
 
 ## Font provenance
 
