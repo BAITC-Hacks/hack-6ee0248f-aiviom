@@ -1,238 +1,466 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { Activity, ArrowRight, BookOpen, BriefcaseBusiness, Check, CheckCircle2, ChevronDown, CircleHelp, ClipboardCheck, Clock3, Compass, FileUp, Gift, LayoutDashboard, ListChecks, LoaderCircle, RotateCcw, Search, ShieldCheck, Sparkles, Users, X } from 'lucide-react';
-import type { Candidate, Employee, Event, ExtendedProfile, Catalog, Quest, RecommendationResult, Rewards, Roadmap, Session, ExternalResults } from './api';
-import { endpoint } from './api';
-import type { Gain, Preview } from '../shared/types';
-import './styles.css';
+import React, { useCallback, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  Activity,
+  BookOpen,
+  ChevronDown,
+  Compass,
+  Gift,
+  LayoutDashboard,
+  Menu,
+  MoreHorizontal,
+  RotateCcw,
+  Search,
+  Settings2,
+  ShieldCheck,
+  Users,
+  X,
+} from "lucide-react";
+import type { Session } from "./api";
+import { endpoint, setApiLocale } from "./api";
+import { I18nProvider, useI18n } from "./i18n";
+import {
+  Dialog,
+  Notice,
+  Status,
+  Tag,
+  useLoad,
+  formatDate,
+  type Action,
+} from "./ui";
+import { EmployeePath } from "./screens/EmployeePath";
+import { Quests } from "./screens/Quests";
+import { People } from "./screens/People";
+import { Insights } from "./screens/Insights";
+import { CatalogView } from "./screens/CatalogView";
+import { ExternalSearch } from "./screens/ExternalSearch";
+import { RewardsView } from "./screens/RewardsView";
+import { AuditView } from "./screens/AuditView";
+import "./styles.css";
 
-type Tab = 'path' | 'quests' | 'people' | 'insights' | 'catalog' | 'external' | 'rewards' | 'audit';
-type Locale = 'ru' | 'kk' | 'en';
-const messages = {
-  ru: { path: 'Мой путь', quests: 'Практические проекты', people: 'Люди и назначения', insights: 'Аналитика и импорт', catalog: 'Каталог', external: 'Внешние возможности', rewards: 'Награды', audit: 'Решения и аудит', demo: 'Демо-режим', switch: 'Роль для проверки', date: 'Дата расчёта', reset: 'Сбросить демо', loading: 'Загружаем данные…', retry: 'Повторить', empty: 'Пока нет записей', employee: 'Сотрудник', advisor: 'Наставник', manager: 'Руководитель', hr: 'HR', supervisor: 'Супервайзер' },
-  kk: { path: 'Менің жолым', quests: 'Практикалық жобалар', people: 'Қызметкерлер мен тапсырмалар', insights: 'Талдау және импорт', catalog: 'Каталог', external: 'Сыртқы мүмкіндіктер', rewards: 'Марапаттар', audit: 'Шешімдер және аудит', demo: 'Демо режимі', switch: 'Тексеру рөлі', date: 'Есептеу күні', reset: 'Демоны қалпына келтіру', loading: 'Деректер жүктелуде…', retry: 'Қайталау', empty: 'Әзірге жазба жоқ', employee: 'Қызметкер', advisor: 'Тәлімгер', manager: 'Басшы', hr: 'HR', supervisor: 'Бақылаушы' },
-  en: { path: 'My path', quests: 'Practical projects', people: 'People and assignments', insights: 'Analytics and import', catalog: 'Catalog', external: 'External opportunities', rewards: 'Rewards', audit: 'Decisions and audit', demo: 'Demo mode', switch: 'Review role', date: 'Calculation date', reset: 'Reset demo', loading: 'Loading data…', retry: 'Retry', empty: 'No records yet', employee: 'Employee', advisor: 'Advisor', manager: 'Manager', hr: 'HR', supervisor: 'Supervisor' },
+type Tab =
+  | "path"
+  | "quests"
+  | "people"
+  | "insights"
+  | "catalog"
+  | "external"
+  | "rewards"
+  | "audit";
+const icons = {
+  path: Compass,
+  quests: Activity,
+  people: Users,
+  insights: LayoutDashboard,
+  catalog: BookOpen,
+  external: Search,
+  rewards: Gift,
+  audit: ShieldCheck,
 };
-const formatNum = (n: number | null | undefined) => n == null || !Number.isFinite(n) ? '—' : new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(n);
-const formatPercent = (n: number | null | undefined) => n == null || !Number.isFinite(n) ? 'нет данных' : `${formatNum(n)}%`;
-const formatDate = (s?: string | null) => s ? new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(s)) : '—';
-const pretty = (v: unknown): string => v == null ? '—' : typeof v === 'boolean' ? v ? 'Да' : 'Нет' : typeof v === 'number' ? formatNum(v) : String(v);
-const statusText: Record<string, string> = { submitted: 'На согласовании', advisor_review: 'На согласовании', needs_revision: 'Нужна доработка', rejected: 'Отклонено', approved: 'Согласовано', resource_review: 'Ресурсное решение', policy_review: 'Проверка правила', ready: 'Можно выполнять', in_progress: 'В работе', evidence_submitted: 'Результат на проверке', accepted: 'Принято', completed: 'Завершено', planned: 'В плане', available: 'Доступно', blocked: 'Требуется подготовка', no_show: 'Не состоялось', dropped: 'Прервано', overdue:'Просрочено', declined:'Отказался' };
-const gradeOrder = ['Junior', 'Middle', 'Senior', 'Lead'];
-const idOf = (v: Record<string, unknown>) => String(v.id ?? v.request_id ?? v.event_id ?? '');
-
-function useLoad<T>(load: () => Promise<T>, deps: React.DependencyList) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(true);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setBusy(true); setError('');
-    load().then(v => { if (active) setData(v); }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Не удалось загрузить данные.'); }).finally(() => { if (active) setBusy(false); });
-    return () => { active = false; };
-  }, [...deps, tick]);
-  return { data, error, busy, refresh: () => setTick(t => t + 1) };
-}
-
-function Notice({ children, tone = 'info' }: { children: React.ReactNode; tone?: 'info' | 'warning' | 'error' | 'success' }) { return <div role={tone === 'error' ? 'alert' : 'status'} className={`notice ${tone}`}>{children}</div>; }
-function Status({ loading, error, retry }: { loading: boolean; error: string; retry: () => void }) {
-  if (loading) return <div className="skeleton-stack" aria-label="Загружаем данные"><div/><div/><div/></div>;
-  if (error) return <Notice tone="error">{error} <button className="text-button" onClick={retry}>Повторить</button></Notice>;
-  return null;
-}
-function Empty({ title, detail }: { title: string; detail?: string }) { return <div className="empty"><p>{title}</p>{detail && <span>{detail}</span>}</div>; }
-function Panel({ title, aside, children, className = '' }: { title: string; aside?: React.ReactNode; children: React.ReactNode; className?: string }) { return <section className={`panel ${className}`}><div className="panel-head"><h2>{title}</h2>{aside}</div>{children}</section>; }
-function Tag({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral'|'green'|'amber'|'red' }) { return <span className={`tag ${tone}`}>{children}</span>; }
-function Submit({ children, busy, disabled = false }: { children: React.ReactNode; busy: boolean; disabled?: boolean }) { return <button type="submit" className="button primary" disabled={busy || disabled}>{busy ? <LoaderCircle size={16} className="spin"/> : null}{children}</button>; }
-function Value({ value, suffix }: { value: number | null | undefined; suffix?: string }) { return <strong className="value">{formatNum(value)}{value != null && suffix ? <small> {suffix}</small> : null}</strong>; }
-function ShortTable({ rows }: { rows: Record<string, unknown>[] }) {
-  if (!rows.length) return <Empty title="Записей пока нет" />;
-  const keys = Object.keys(rows[0]).filter(k => !['password','secret'].includes(k));
-  return <div className="table-scroll"><table><thead><tr>{keys.map(k => <th key={k}>{k.replaceAll('_',' ')}</th>)}</tr></thead><tbody>{rows.map((row,i) => <tr key={i}>{keys.map(k => <td key={k}>{typeof row[k] === 'object' ? JSON.stringify(row[k]) : pretty(row[k])}</td>)}</tr>)}</tbody></table></div>;
-}
+const descriptions: Record<Tab, string> = {
+  path: "page.pathDescription",
+  quests: "page.questsDescription",
+  people: "page.peopleDescription",
+  insights: "page.insightsDescription",
+  catalog: "page.catalogDescription",
+  external: "page.externalDescription",
+  rewards: "page.rewardsDescription",
+  audit: "page.auditDescription",
+};
 
 function App() {
+  const { locale, setLocale, t } = useI18n();
+  useEffect(() => {
+    setApiLocale(locale);
+  }, [locale]);
   const sessionLoad = useLoad(endpoint.session, []);
   const [session, setSession] = useState<Session | null>(null);
-  const [tab, setTab] = useState<Tab>('path');
-  const [locale, setLocale] = useState<Locale>('ru');
-  const [flash, setFlash] = useState<{ text: string; tone: 'error'|'success' } | null>(null);
+  const [tab, setTab] = useState<Tab>("path");
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [flash, setFlash] = useState<{
+    text: string;
+    tone: "error" | "success";
+  } | null>(null);
   const [switching, setSwitching] = useState(false);
-  const [asOf, setAsOf] = useState('');
+  const [asOf, setAsOf] = useState("");
   const [revision, setRevision] = useState(0);
-  const [questDraft, setQuestDraft] = useState<{title:string;description:string;source_url:string;skill_id:string}|null>(null);
-  useEffect(() => { if (sessionLoad.data) { setSession(sessionLoad.data); setAsOf(sessionLoad.data.as_of); } }, [sessionLoad.data]);
-  const t = messages[locale];
+  const [questDraft, setQuestDraft] = useState<{
+    title: string;
+    description: string;
+    source_url: string;
+    skill_id: string;
+  } | null>(null);
+  useEffect(() => {
+    if (sessionLoad.data) {
+      setSession(sessionLoad.data);
+      setAsOf(sessionLoad.data.as_of);
+    }
+  }, [sessionLoad.data]);
   const role = session?.identity.role;
-  const tabs: Tab[] = role === 'employee' ? ['path','quests','catalog','external','rewards'] : role === 'advisor' ? ['people','quests','catalog'] : role === 'manager' ? ['people','quests','catalog'] : role === 'hr' ? ['insights','people','quests','catalog','audit'] : ['audit','quests','catalog'];
-  useEffect(() => { if (!tabs.includes(tab)) setTab(tabs[0]); }, [role]);
-  const action = useCallback(async <T,>(work: () => Promise<T>, message: string, refresh = true): Promise<T | null> => {
-    try { setFlash(null); const result = await work(); setFlash({ text: message, tone: 'success' }); if (refresh) setRevision(v => v + 1); return result; }
-    catch (e) { setFlash({ text: e instanceof Error ? e.message : 'Действие не выполнено.', tone: 'error' }); return null; }
-  }, []);
-  async function changeIdentity(identity_id: string) { setSwitching(true); const next = await action(() => endpoint.switchIdentity(identity_id), 'Рабочая роль изменена.', false); if (next) { setSession(next); setAsOf(next.as_of); setRevision(v => v+1); } setSwitching(false); }
-  async function reset() { if (!window.confirm('Сбросить изменения в этом демо-пространстве?')) return; setSwitching(true); const next = await action(endpoint.reset, 'Демо-пространство сброшено.', false); if (next) { setSession(next); setAsOf(next.as_of); setRevision(v => v+1); } setSwitching(false); }
-  async function changeDate() { const next = await action(() => endpoint.date(asOf), 'Дата расчёта обновлена.', false); if (next) { setSession(next); setRevision(v => v+1); } }
-  if (!session) return <main className="boot"><div className="brand-mark"><Compass size={26}/></div><h1>Career Quest</h1><Status loading={sessionLoad.busy} error={sessionLoad.error} retry={sessionLoad.refresh}/></main>;
-  return <div className="app-shell">
-    <aside className="sidebar"><div className="brand"><div className="brand-mark"><Compass size={21}/></div><span>Career Quest<small>Путь развития</small></span></div><nav aria-label="Основная навигация">{tabs.map(item => { const Icon = ({path: Compass,quests: Activity,people: Users,insights: LayoutDashboard,catalog: BookOpen,external: Search,rewards: Gift,audit: ShieldCheck} as const)[item]; return <button key={item} className={`nav-link ${tab===item?'active':''}`} onClick={() => setTab(item)} aria-current={tab===item?'page':undefined}><Icon size={18}/>{t[item]}</button>; })}</nav><div className="sidebar-foot"><span className="live-dot"/> Изолированное демо-пространство</div></aside>
-    <div className="main-column"><header className="topbar"><div className="mobile-brand"><Compass size={20}/> Career Quest</div><div className="topbar-left"><span className="context-label">{t.demo}</span><strong>{session.identity.label}</strong><Tag tone="green">{t[role!]}</Tag></div><div className="topbar-right"><label className="select-wrap"><span className="sr-only">Язык интерфейса</span><select value={locale} onChange={e => setLocale(e.target.value as Locale)}><option value="ru">Русский</option><option value="kk">Қазақша</option><option value="en">English</option></select><ChevronDown size={14}/></label><label className="select-wrap identity-select"><span className="sr-only">{t.switch}</span><select value={session.identity.id} disabled={switching} onChange={e => changeIdentity(e.target.value)}>{!session.identities.some(i=>i.id===session.identity.id)&&<option value={session.identity.id}>{session.identity.label} · {t[session.identity.role]}</option>}{session.identities.map(i => <option key={i.id} value={i.id}>{i.label} · {t[i.role]}</option>)}</select><ChevronDown size={14}/></label></div></header>
-      <main className="content"><div className="page-heading"><div><h1>{t[tab]}</h1><p>{tab === 'path' ? 'Цель, обязательные задачи и подтверждённый маршрут развития.' : tab === 'quests' ? 'Практическая работа проходит проверку до зачёта навыков.' : tab === 'people' ? 'Рабочие действия в пределах назначенной роли.' : tab === 'insights' ? 'Показатели рассчитаны по доступным данным и выбранной дате.' : tab === 'audit' ? 'Основания решений и правила зачёта.' : tab === 'rewards' ? 'Личные баллы за подтверждённые результаты.' : tab === 'external' ? 'Найденные источники требуют проверки и согласования до зачёта.' : 'Активности и требования из исходного каталога.'}</p></div><span className="as-of">Расчёт на {formatDate(session.as_of)}</span></div>
-      {flash && <div className="flash"><Notice tone={flash.tone}>{flash.text}</Notice><button aria-label="Закрыть сообщение" onClick={() => setFlash(null)}><X size={16}/></button></div>}
-      {tab === 'path' && <EmployeePath session={session} revision={revision} action={action}/>}
-      {tab === 'quests' && <Quests session={session} revision={revision} action={action} seed={questDraft}/>}
-      {tab === 'people' && <People session={session} revision={revision} action={action} onSwitch={changeIdentity}/>}
-      {tab === 'insights' && <Insights revision={revision} action={action}/>}
-      {tab === 'catalog' && <CatalogView/>}
-      {tab === 'external' && <ExternalSearch session={session} locale={locale} onPropose={seed=>{setQuestDraft(seed);setTab('quests');}}/>}
-      {tab === 'rewards' && <RewardsView revision={revision} action={action}/>}
-      {tab === 'audit' && <AuditView session={session} revision={revision} action={action}/>}
-      <footer className="workspace-tools"><div><strong>Демо-пространство</strong><span>Дата меняет только расчёт в демо. История исходного набора остаётся неизменной.</span></div><div className="workspace-actions"><label>{t.date}<input type="date" value={asOf} onChange={e => setAsOf(e.target.value)}/></label><button className="button secondary" disabled={switching || asOf===session.as_of} onClick={changeDate}>Применить дату</button><button className="button ghost" disabled={switching} onClick={reset}><RotateCcw size={16}/>{t.reset}</button></div></footer>
-      </main></div>
-    <nav className="mobile-nav" aria-label="Мобильная навигация">{tabs.map(item => { const Icon = ({path: Compass,quests: Activity,people: Users,insights: LayoutDashboard,catalog: BookOpen,external: Search,rewards: Gift,audit: ShieldCheck} as const)[item]; return <button key={item} className={tab===item?'active':''} onClick={() => setTab(item)} aria-label={t[item]} aria-current={tab===item?'page':undefined}><Icon size={20}/><span>{t[item]}</span></button>; })}</nav>
-  </div>;
+  const tabs: Tab[] =
+    role === "employee"
+      ? ["path", "quests", "catalog", "external", "rewards"]
+      : role === "advisor" || role === "manager"
+        ? ["people", "quests", "catalog"]
+        : role === "hr"
+          ? ["insights", "people", "quests", "catalog", "audit"]
+          : ["audit", "quests", "catalog"];
+  useEffect(() => {
+    if (!tabs.includes(tab)) setTab(tabs[0]);
+  }, [role]);
+  const action: Action = useCallback(
+    async (work, message, refresh = true) => {
+      try {
+        setFlash(null);
+        const result = await work();
+        if (message) setFlash({ text: message, tone: "success" });
+        if (refresh) setRevision((value) => value + 1);
+        return result;
+      } catch (cause) {
+        setFlash({
+          text:
+            cause instanceof Error ? cause.message : t("common.actionFailed"),
+          tone: "error",
+        });
+        return null;
+      }
+    },
+    [t],
+  );
+  async function changeIdentity(identity_id: string) {
+    setSwitching(true);
+    const next = await action(
+      () => endpoint.switchIdentity(identity_id),
+      t("demo.roleChanged"),
+      false,
+    );
+    if (next) {
+      setSession(next);
+      setAsOf(next.as_of);
+      setRevision((value) => value + 1);
+      setDemoOpen(false);
+    }
+    setSwitching(false);
+  }
+  async function reset() {
+    setSwitching(true);
+    const next = await action(endpoint.reset, t("demo.resetDone"), false);
+    if (next) {
+      setSession(next);
+      setAsOf(next.as_of);
+      setRevision((value) => value + 1);
+      setResetOpen(false);
+      setDemoOpen(false);
+    }
+    setSwitching(false);
+  }
+  async function changeDate(event: React.FormEvent) {
+    event.preventDefault();
+    const next = await action(
+      () => endpoint.date(asOf),
+      t("demo.dateDone"),
+      false,
+    );
+    if (next) {
+      setSession(next);
+      setRevision((value) => value + 1);
+    }
+  }
+  const navigate = (item: Tab) => {
+    setTab(item);
+    setMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+  if (!session)
+    return (
+      <main className="boot">
+        <img src="/brand/cq-mark.svg" alt="" width="48" height="48" />
+        <h1>Career Quest</h1>
+        <Status
+          loading={sessionLoad.busy}
+          error={sessionLoad.error}
+          retry={sessionLoad.refresh}
+        />
+      </main>
+    );
+  const primary = tabs.slice(0, 3);
+  return (
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        {t("common.skipToContent")}
+      </a>
+      <aside className="sidebar">
+        <div className="brand">
+          <img src="/brand/cq-mark.svg" alt="" width="36" height="36" />
+          <span>Career Quest</span>
+        </div>
+        <nav aria-label={t("nav.main")}>
+          {tabs.map((item) => {
+            const Icon = icons[item];
+            return (
+              <button
+                key={item}
+                className={`nav-link ${tab === item ? "active" : ""}`}
+                onClick={() => navigate(item)}
+                aria-current={tab === item ? "page" : undefined}
+              >
+                <Icon size={20} aria-hidden="true" />
+                {t(`nav.${item}`)}
+              </button>
+            );
+          })}
+        </nav>
+        <button className="sidebar-demo" onClick={() => setDemoOpen(true)}>
+          <Settings2 size={18} aria-hidden="true" />
+          {t("demo.title")}
+        </button>
+      </aside>
+      <div className="main-column">
+        <header className="topbar">
+          <button
+            className="mobile-menu-button"
+            onClick={() => setMenuOpen(true)}
+            aria-label={t("nav.openMenu")}
+          >
+            <Menu size={23} />
+          </button>
+          <span className="topbar-brand">
+            <img src="/brand/cq-mark.svg" alt="" width="28" height="28" />{" "}
+            Career Quest
+          </span>
+          <div className="topbar-right">
+            <div className="identity-chip">
+              <strong title={session.identity.label}>
+                {session.identity.label}
+              </strong>
+              <Tag>{t(`role.${session.identity.role}`)}</Tag>
+            </div>
+            <label className="locale-picker">
+              <span className="sr-only">{t("common.language")}</span>
+              <select
+                value={locale}
+                onChange={(event) =>
+                  setLocale(event.target.value as typeof locale)
+                }
+              >
+                <option value="ru">Русский</option>
+                <option value="kk">Қазақша</option>
+                <option value="en">English</option>
+              </select>
+              <ChevronDown size={16} aria-hidden="true" />
+            </label>
+            <button
+              className="icon-button demo-toggle"
+              aria-label={t("demo.title")}
+              onClick={() => setDemoOpen(true)}
+            >
+              <Settings2 size={20} />
+            </button>
+          </div>
+        </header>
+        <main id="main-content" className="content">
+          <div className="page-heading">
+            <div>
+              <h1>{t(`nav.${tab}`)}</h1>
+              <p>{t(descriptions[tab])}</p>
+            </div>
+            <span className="as-of">
+              {t("common.asOf", { date: formatDate(locale, session.as_of) })}
+            </span>
+          </div>
+          {flash && (
+            <div className="flash">
+              <Notice tone={flash.tone}>{flash.text}</Notice>
+              <button
+                className="icon-button"
+                aria-label={t("common.dismiss")}
+                onClick={() => setFlash(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          )}
+          {tab === "path" && (
+            <EmployeePath
+              session={session}
+              revision={revision}
+              action={action}
+            />
+          )}
+          {tab === "quests" && (
+            <Quests
+              session={session}
+              revision={revision}
+              action={action}
+              seed={questDraft}
+            />
+          )}
+          {tab === "people" && (
+            <People
+              session={session}
+              revision={revision}
+              action={action}
+              onSwitch={changeIdentity}
+            />
+          )}
+          {tab === "insights" && (
+            <Insights revision={revision} action={action} />
+          )}
+          {tab === "catalog" && <CatalogView />}
+          {tab === "external" && (
+            <ExternalSearch
+              session={session}
+              onPropose={(seed) => {
+                setQuestDraft(seed);
+                navigate("quests");
+              }}
+            />
+          )}
+          {tab === "rewards" && (
+            <RewardsView revision={revision} action={action} />
+          )}
+          {tab === "audit" && (
+            <AuditView session={session} revision={revision} />
+          )}
+        </main>
+      </div>
+      <nav className="mobile-nav" aria-label={t("nav.mobile")}>
+        {primary.map((item) => {
+          const Icon = icons[item];
+          return (
+            <button
+              key={item}
+              className={tab === item ? "active" : ""}
+              aria-current={tab === item ? "page" : undefined}
+              onClick={() => navigate(item)}
+            >
+              <Icon size={21} aria-hidden="true" />
+              <span>{t(`nav.${item}`)}</span>
+            </button>
+          );
+        })}
+        <button
+          className={primary.includes(tab) ? "" : "active"}
+          onClick={() => setMenuOpen(true)}
+        >
+          <MoreHorizontal size={21} aria-hidden="true" />
+          <span>{t("nav.more")}</span>
+        </button>
+      </nav>
+      {menuOpen && (
+        <Dialog title={t("nav.allSections")} onClose={() => setMenuOpen(false)}>
+          <div className="menu-list">
+            {tabs.map((item) => {
+              const Icon = icons[item];
+              return (
+                <button
+                  key={item}
+                  className="menu-item"
+                  onClick={() => navigate(item)}
+                >
+                  <Icon size={20} />
+                  {t(`nav.${item}`)}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="menu-item"
+            onClick={() => {
+              setMenuOpen(false);
+              setDemoOpen(true);
+            }}
+          >
+            <Settings2 size={20} />
+            {t("demo.title")}
+          </button>
+        </Dialog>
+      )}
+      {demoOpen && (
+        <Dialog title={t("demo.title")} onClose={() => setDemoOpen(false)}>
+          <div className="form-stack">
+            <p className="muted">{t("demo.explanation")}</p>
+            <label>
+              {t("demo.role")}
+              <select
+                disabled={switching}
+                value={session.identity.id}
+                onChange={(event) => changeIdentity(event.target.value)}
+              >
+                {!session.identities.some(
+                  (item) => item.id === session.identity.id,
+                ) && (
+                  <option value={session.identity.id}>
+                    {session.identity.label}
+                  </option>
+                )}
+                {session.identities.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label} · {t(`role.${item.role}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <form className="form-stack" onSubmit={changeDate}>
+              <label>
+                {t("demo.date")}
+                <input
+                  type="date"
+                  required
+                  value={asOf}
+                  onChange={(event) => setAsOf(event.target.value)}
+                />
+              </label>
+              <button
+                className="button secondary"
+                disabled={switching || asOf === session.as_of}
+              >
+                {t("demo.applyDate")}
+              </button>
+            </form>
+            <button
+              className="button danger"
+              onClick={() => {
+                setDemoOpen(false);
+                setResetOpen(true);
+              }}
+            >
+              <RotateCcw size={18} />
+              {t("demo.reset")}
+            </button>
+          </div>
+        </Dialog>
+      )}
+      {resetOpen && (
+        <Dialog title={t("demo.reset")} onClose={() => setResetOpen(false)}>
+          <p>{t("demo.resetQuestion")}</p>
+          <div className="dialog-actions">
+            <button
+              className="button secondary"
+              onClick={() => setResetOpen(false)}
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              className="button danger"
+              disabled={switching}
+              onClick={reset}
+            >
+              {t("demo.reset")}
+            </button>
+          </div>
+        </Dialog>
+      )}
+    </div>
+  );
 }
 
-type Action = <T>(work: () => Promise<T>, message: string, refresh?: boolean) => Promise<T | null>;
-function EmployeePath({ session, revision, action }: { session: Session; revision: number; action: Action }) {
-  const id = session.identity.employee_id;
-  const profileLoad = useLoad(() => id ? endpoint.profile(id) : Promise.reject(new Error('У демо-пользователя нет профиля сотрудника.')), [id,revision]);
-  const roadmapLoad = useLoad(() => id ? endpoint.roadmap(id) : Promise.reject(new Error('Профиль недоступен.')), [id,revision]);
-  const catalogLoad = useLoad(endpoint.catalog, []);
-  const [recs, setRecs] = useState<RecommendationResult | null>(null);
-  const [recBusy, setRecBusy] = useState(false);
-  const [recError, setRecError] = useState('');
-  const [selected, setSelected] = useState<string | null>(null);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-  const [evidence, setEvidence] = useState('');
-  const [helpReason, setHelpReason] = useState('');
-  const [showAllMilestones, setShowAllMilestones] = useState(false);
-  const [goalRole, setGoalRole] = useState('');
-  const [goalGrade, setGoalGrade] = useState('');
-  const [budget, setBudget] = useState(4);
-  const [saving, setSaving] = useState(false);
-  const profile = profileLoad.data;
-  const catalog = catalogLoad.data;
-  const roadmap = roadmapLoad.data;
-  useEffect(() => { if (profile) { setGoalRole(profile.goal?.target_role ?? profile.employee.role); setGoalGrade(profile.goal?.target_grade ?? gradeOrder[Math.min(gradeOrder.indexOf(profile.employee.grade)+1,3)]); setBudget(profile.weekly_budget ?? 4); } }, [profile?.employee.employee_id, profile?.goal?.target_role, profile?.goal?.target_grade, profile?.weekly_budget]);
-  useEffect(() => { setRecs(null); setSelected(null); setPreview(null); }, [id,revision]);
-  const byId = useMemo(() => new Map((catalog?.events ?? []).map(e => [e.event_id,e])), [catalog]);
-  const selectedEvent = selected ? byId.get(selected) : null;
-  const selectedCandidate = selected ? profile?.candidates.find(c => c.event.event_id===selected) : null;
-  async function loadRecs() { if (!id) return; setRecBusy(true); setRecError(''); try { setRecs(await endpoint.recommendations(id)); } catch(e) { setRecError(e instanceof Error ? e.message : 'Рекомендации недоступны.'); } finally { setRecBusy(false); } }
-  async function showPreview(eventId: string) { if (!id) return; setSelected(eventId); setPreview(null); setPreviewBusy(true); try { setPreview(await endpoint.preview(id,eventId)); } catch(e) { await action(() => Promise.reject(e), '', false); } finally { setPreviewBusy(false); requestAnimationFrame(()=>document.getElementById('activity-detail')?.scrollIntoView({behavior:'smooth',block:'start'})); } }
-  async function saveGoal(e: React.FormEvent) { e.preventDefault(); if (!id) return; setSaving(true); await action(() => endpoint.goal(id, {target_role:goalRole,target_grade:goalGrade}, budget), 'Цель и недельный бюджет сохранены.'); setSaving(false); }
-  async function requestCompletion(e: React.FormEvent) { e.preventDefault(); if (!id || !selected || !evidence.trim()) return; setSaving(true); const result = await action(() => endpoint.completionRequest(id, selected, evidence.trim(), selectedCandidate?.session ?? undefined), 'Результат отправлен наставнику на проверку.'); if (result) setEvidence(''); setSaving(false); }
-  async function requestHelp(e: React.FormEvent) { e.preventDefault(); if (!id || !helpReason) return; setSaving(true); const result = await action(() => endpoint.help(id,helpReason,selected ?? undefined),'Запрос о затруднении отправлен руководителю.'); if (result) setHelpReason(''); setSaving(false); }
-  return <><Status loading={profileLoad.busy} error={profileLoad.error} retry={profileLoad.refresh}/>{profile && <>
-    <section className="profile-hero"><div className="profile-identity"><span className="avatar">{profile.employee.full_name.split(' ').slice(0,2).map(s=>s[0]).join('')}</span><div><h2>{profile.employee.full_name}</h2><p>{profile.employee.role} · {profile.employee.grade} · {profile.employee.department}</p><span>Текущий грейд не меняется автоматически при прохождении маршрута.</span></div></div><div className="profile-numbers"><div><span>Покрытие требований цели</span><Value value={profile.coverage} suffix="%"/></div><div><span>Критических требований выполнено</span><strong className="value">{profile.critical_met} <small>из {profile.critical_total}</small></strong></div><div><span>Прогресс плана</span><Value value={profile.plan_progress} suffix="%"/></div></div></section>
-    <div className="content-grid"><div className="main-stack"><Panel title="Назначено HR" aside={<Tag tone="amber">{profile.mandatory.length} записей</Tag>}>{profile.mandatory.length ? <div className="list">{profile.mandatory.map(h => { const event=byId.get(h.event_id); return <div className="row-item" key={h.record_id}><div><strong>{event?.title ?? h.event_id}</strong><p>Статус: {statusText[h.status]??h.status}{h.due_date ? ` · Срок: ${formatDate(h.due_date)}` : ''}</p><small>Обязательное назначение · зачёт навыков определяется фактическим результатом</small></div><div className="inline-actions"><button className="button secondary small" onClick={() => { setSelected(h.event_id); document.getElementById('help-form')?.scrollIntoView({behavior:'smooth'}); }}>Нужна помощь</button>{h.status!=='completed'&&<button className="button primary small" onClick={()=>showPreview(h.event_id)}>Отправить результат</button>}</div></div>; })}</div> : <Empty title="Нет обязательных назначений" detail="Когда HR назначит активность, она появится здесь отдельно от добровольного плана."/>}</Panel>
-    <Panel className="roadmap-panel" title="Маршрут к цели" aside={roadmap?.search_limited && <Tag tone="amber">Поиск ограничен</Tag>}><Status loading={roadmapLoad.busy} error={roadmapLoad.error} retry={roadmapLoad.refresh}/>{roadmap && <>{roadmap.milestones.length ? <><div className="milestone-list">{(showAllMilestones?roadmap.milestones:[...roadmap.milestones.filter(m=>m.status!=='met'),...roadmap.milestones.filter(m=>m.status==='met')].slice(0,5)).map((m,i) => <div className="milestone" key={m.skill_id}><span className={`milestone-node ${m.status==='met'?'done':''}`}>{m.status==='met'?<Check size={14}/>:i+1}</span><div><strong>{m.name}</strong><p>Уровень {formatNum(m.current)} → требуется {formatNum(m.required)} {m.critical && <Tag tone="amber">Критический</Tag>}</p><small>{m.status==='met'?'Требование подтверждено':m.event_ids.length?`Возможные активности: ${m.event_ids.map(e=>byId.get(e)?.title??e).join(', ')}`:'Подходящий шаг пока не найден'}</small></div></div>)}</div>{roadmap.milestones.length>5&&<button className="text-button milestone-toggle" onClick={()=>setShowAllMilestones(v=>!v)}>{showAllMilestones?'Свернуть маршрут':`Показать все требования (${roadmap.milestones.length})`}</button>}</> : <Empty title={profile.no_next_reason === 'goal_skills_met' ? 'Требования цели по навыкам выполнены' : 'Пока нет milestones'} detail="Требования и допуск пересчитываются после подтверждённого результата."/>}{roadmap.alternatives?.length ? <div className="list"><h3>Практические альтернативы</h3>{roadmap.alternatives.map(q=><div className="row-item" key={q.quest_id}><div><strong>{q.title}</strong><p>{statusText[q.status]??q.status} · навыки будут зачтены только после принятия результата.</p></div></div>)}</div>:null}<div className="roadmap-meta"><span>Оценка маршрута: {formatNum(roadmap.plan_hours)} ч</span><span>Остаточные разрывы: {roadmap.remaining_gaps.length}</span></div>{roadmap.search_limited && <Notice tone="warning">Поиск маршрута был ограничен. Это не означает, что других путей нет.</Notice>}</>}</Panel>
-    <Panel className="recommendations-panel" title="Рекомендованные шаги" aside={<button className="button secondary small" disabled={recBusy} onClick={loadRecs}>{recBusy?<LoaderCircle size={15} className="spin"/>:<Sparkles size={15}/>} {recs?'Обновить':'Получить рекомендации'}</button>}>{recBusy && <div className="skeleton-stack"><div/><div/></div>}{recError && <Notice tone="error">{recError} <button className="text-button" onClick={loadRecs}>Повторить</button></Notice>}{!recs && !recBusy && !recError && <Empty title="Рекомендации ещё не запрошены" detail="Мы покажем 1–3 шага с причинами выбора и альтернативами."/>}{recs && <><Notice tone={recs.mode==='live_ai'||recs.mode==='cached_live_ai'?'success':'warning'}>{recs.mode==='live_ai'?'Ответ модели на текущих фактах':recs.mode==='cached_live_ai'?'Ранее полученный ответ модели для этих фактов':recs.mode==='rules_fallback'?'Правила подбора: модель сейчас недоступна':'Рекомендации сейчас недоступны'}{recs.model?` · ${recs.model}`:''}</Notice>{recs.warnings.map((w,i)=><p className="muted" key={i}>{w}</p>)}{recs.recommendations.length ? <div className="recommendations">{recs.recommendations.map((r,i)=>{ const c=profile.candidates.find(c=>c.event.event_id===r.event_id); const event=c?.event??byId.get(r.event_id); return <article className="recommendation" key={r.event_id}><div className="recommendation-index">{i+1}</div><div className="recommendation-body"><div className="recommendation-title"><h3>{event?.title??r.event_id}</h3><Tag tone="green">{event?.duration_hours??'—'} ч</Tag></div><p>{r.reason}</p><div className="factor-list">{r.factor_keys.map(f=><Tag key={f}>{({grade:'Текущий грейд',skill_gap:'Разрыв навыка',history:'История',target_requirements:'Требования цели'} as Record<string,string>)[f]??f}</Tag>)}</div><details className="evidence-details"><summary>Проверенные факты</summary>{r.evidence_ids.length?<ul>{r.evidence_ids.map(e=><li key={e}>{e}</li>)}</ul>:<p>Расчёт профиля и каталога</p>}</details>{r.alternative_event_id && <div className="alternative"><strong>Почему не {byId.get(r.alternative_event_id)?.title??r.alternative_event_id}?</strong><p>{r.alternative_reason}</p></div>}<div className="inline-actions"><button className="button secondary small" onClick={()=>showPreview(r.event_id)}>Посмотреть эффект</button><button className="button primary small" onClick={()=>id&&action(()=>endpoint.plan(id,r.event_id),'Шаг добавлен в план.')}>В план <ArrowRight size={15}/></button></div></div></article>;})}</div> : <Empty title="Подходящие шаги пока не найдены" detail={profile.no_next_reason??'Проверьте цель и доступные активности.'}/>}</>}</Panel>
-    </div><div className="side-stack"><Panel title="Цель и нагрузка"><form onSubmit={saveGoal} className="form-stack"><label>Целевая роль<select value={goalRole} onChange={e=>setGoalRole(e.target.value)} required>{[...new Set(catalog?.role_profiles.map(r=>r.role)??[profile.employee.role])].map(r=><option key={r} value={r}>{r}</option>)}</select></label><label>Целевой грейд<select value={goalGrade} onChange={e=>setGoalGrade(e.target.value)}>{gradeOrder.map(g=><option key={g}>{g}</option>)}</select></label><label>Время на развитие в неделю<input type="number" min="1" max="40" value={budget} onChange={e=>setBudget(Number(e.target.value))} required/></label><Submit busy={saving}>Сохранить цель</Submit></form><p className="fine-print">Цель описывает навыки для развития. Кадровое решение принимает человек.</p></Panel>
-    <Panel title="Мой план"><div className="metric-line"><span>Недельный бюджет</span><strong>{formatNum(profile.weekly_budget)} ч</strong></div><div className="metric-line"><span>Запланировано шагов</span><strong>{profile.plan_items.length}</strong></div>{profile.plan_items.length?<ul className="simple-list">{profile.plan_items.map(id=><li key={id}>{byId.get(id)?.title??id}</li>)}</ul>:<p className="muted">Выберите полезный шаг из рекомендаций или каталога.</p>}<div className="metric-line"><span>Личный уровень</span><strong>{profile.personal_level}</strong></div><div className="metric-line"><span>Баланс</span><strong>{formatNum(profile.balance)} XP</strong></div></Panel>
-    <Panel title="Что мешает?"><form id="help-form" className="form-stack" onSubmit={requestHelp}><label>Причина<select value={helpReason} onChange={e=>setHelpReason(e.target.value)} required><option value="">Выберите причину</option><option>Не хватает времени</option><option>Не подходит формат</option><option>Неясна польза</option><option>Материал уже знаком</option><option>Другая причина</option></select></label><Submit busy={saving}>Отправить запрос</Submit></form><p className="fine-print">Руководитель увидит причину. Обязательное назначение не отменяется автоматически.</p></Panel><Panel title="История и основания"><p className="muted">Последние записи по активности; исходная история не меняется при выборе цели.</p>{profile.history.length?<div className="history-list">{[...profile.history].reverse().slice(0,8).map(h=><div className="metric-line" key={h.record_id}><span>{byId.get(h.event_id)?.title??h.event_id}<small>{formatDate(h.date)} · {statusText[h.status]??h.status}</small></span><strong>{h.score==null?'—':`${h.score} балл`}</strong></div>)}</div>:<Empty title="Истории пока нет"/>}{profile.provenance.length>0&&<p className="fine-print">Подтверждённые основания: {profile.provenance.length} записей.</p>}</Panel></div></div>
-    {selectedEvent && <section id="activity-detail" className="detail-drawer" aria-label="Детали активности"><div className="drawer-head"><div><span className="context-label">Предпросмотр · данные не меняются</span><h2>{selectedEvent.title}</h2></div><button className="icon-button" aria-label="Закрыть детали" onClick={()=>{setSelected(null);setPreview(null);}}><X size={20}/></button></div><p>{selectedEvent.description}</p><div className="detail-facts"><span>{({self_paced:"Самостоятельно",online:"Онлайн",offline:"Офлайн",hybrid:"Смешанный"} as Record<string,string>)[selectedEvent.format]??selectedEvent.format}</span><span>{selectedEvent.duration_hours} ч</span><span>{selectedCandidate?.session?`Сессия ${formatDate(selectedCandidate.session)}`:'Самостоятельный формат или сессия не указана'}</span></div>{selectedCandidate?.reasons.length ? <Notice tone="warning">{selectedCandidate.reasons.join(' · ')}</Notice> : null}{previewBusy ? <div className="skeleton-stack"><div/><div/></div> : preview ? <div className="preview-grid"><div><h3>Навыки до и после</h3>{Object.entries(preview.deltas).length?Object.entries(preview.deltas).map(([skill,delta])=><div className="metric-line" key={skill}><span>{catalog?.skills.find(s=>s.skill_id===skill)?.name??skill}</span><strong>{formatNum(preview.before[skill])} → {formatNum(preview.after[skill])} <em>+{formatNum(delta)}</em></strong></div>):<p className="muted">У этой активности нет прямого прироста навыков.</p>}</div><div><h3>Эффект на маршрут</h3><div className="metric-line"><span>Покрытие требований</span><strong>{formatNum(preview.coverage_before)}% → {formatNum(preview.coverage_after)}%</strong></div><p>{preview.unlocked_event_ids.length?`Станут доступны: ${preview.unlocked_event_ids.map(id=>byId.get(id)?.title??id).join(', ')}`:'Новых доступных шагов пока нет.'}</p></div></div> : null}<form className="form-stack completion-form" onSubmit={requestCompletion}><label>Подтверждение выполнения<textarea value={evidence} onChange={e=>setEvidence(e.target.value)} placeholder="Опишите результат и приложите ссылку, если она есть" rows={3} required/></label><Submit busy={saving}>Отправить на проверку</Submit><small>Навыки и баллы начисляются после подтверждения наставником.</small></form></section>}
-  </>}</>;
-}
-
-function Quests({ session, revision, action, seed }: { session: Session; revision: number; action: Action; seed: {title:string;description:string;source_url:string;skill_id:string}|null }) {
-  const questsLoad = useLoad(endpoint.quests,[revision,session.identity.id]);
-  const catalogLoad = useLoad(endpoint.catalog,[]);
-  const [selected, setSelected] = useState<string|null>(null);
-  const [busy,setBusy]=useState(false);
-  const [form,setForm]=useState({title:'',description:'',deliverables:'',estimated_hours:4,source_url:'',skill_ids:[] as string[],requires_resource:false,requires_policy:false});
-  const [reason,setReason]=useState(''); const [criteria,setCriteria]=useState(''); const [gainDraft,setGainDraft]=useState<Record<string,{gain:number;max_level:number}>>({}); const [evidence,setEvidence]=useState('');
-  const [requiresResource,setRequiresResource]=useState(false); const [requiresPolicy,setRequiresPolicy]=useState(false);
-  const [revisionDraft,setRevisionDraft]=useState({title:'',description:'',deliverables:''});
-  const role=session.identity.role;
-  const quests=questsLoad.data?.quests??[];
-  const quest=quests.find(q=>q.id===selected)??quests[0];
-  const skillMap=new Map((catalogLoad.data?.skills??[]).map(s=>[s.skill_id,s.name]));
-  useEffect(()=>{ if (quest) { setSelected(quest.id); setCriteria(quest.criteria??''); setEvidence(quest.evidence??''); } },[quest?.id]);
-  useEffect(()=>{ if(seed)setForm(v=>({...v,title:seed.title,description:seed.description,source_url:seed.source_url,skill_ids:[seed.skill_id]})); },[seed]);
-  useEffect(()=>{ if(quest){setRequiresResource(quest.requires_resource);setRequiresPolicy(quest.requires_policy);setRevisionDraft({title:quest.title,description:quest.description,deliverables:quest.deliverables});setGainDraft(Object.fromEntries(quest.skill_ids.map(id=>{const existing=quest.gains.find(g=>g.skill_id===id);return [id,{gain:existing?.gain??1,max_level:existing?.max_level??5}]})));} },[quest?.id]);
-  async function create(e:React.FormEvent){e.preventDefault();setBusy(true);const result=await action(()=>endpoint.createQuest({...form,source_url:form.source_url||null}), 'Практический проект отправлен на согласование.');if(result)setForm({title:'',description:'',deliverables:'',estimated_hours:4,source_url:'',skill_ids:[],requires_resource:false,requires_policy:false});setBusy(false);}
-  async function decide(kind:'review'|'resource'|'policy'|'accept',decision:string){if(!quest||!reason.trim())return;setBusy(true); const body={action:decision,reason:reason.trim(),criteria:criteria.trim(),gains:quest.skill_ids.map(skill_id=>({skill_id,...(gainDraft[skill_id]??{gain:1,max_level:5})})),requires_resource:requiresResource,requires_policy:requiresPolicy}; const work=kind==='review'?()=>endpoint.reviewQuest(quest.id,body):kind==='resource'?()=>endpoint.resourceQuest(quest.id,body):kind==='policy'?()=>endpoint.policyQuest(quest.id,body):()=>endpoint.acceptQuest(quest.id,reason.trim()); const result=await action(work,'Решение сохранено.');if(result)setReason('');setBusy(false);}
-  async function sendEvidence(e:React.FormEvent){e.preventDefault();if(!quest)return;setBusy(true);const result=await action(()=>endpoint.evidenceQuest(quest.id,evidence.trim()),'Доказательство отправлено на проверку.');if(result)setEvidence('');setBusy(false);}
-  async function resubmit(e:React.FormEvent){e.preventDefault();if(!quest)return;setBusy(true);await action(()=>endpoint.resubmitQuest(quest.id,revisionDraft),'Заявка отправлена наставнику повторно.');setBusy(false);}
-  return <><Status loading={questsLoad.busy} error={questsLoad.error} retry={questsLoad.refresh}/><div className="content-grid"><div className="main-stack"><Panel title={role==='employee'?'Мои проекты':'Очередь проектов'} aside={<Tag>{quests.length}</Tag>}>{quests.length?<div className="quest-list">{quests.map(q=><button key={q.id} className={`quest-row ${quest?.id===q.id?'selected':''}`} onClick={()=>setSelected(q.id)}><div><strong>{q.title}</strong><span>{q.description}</span></div><Tag tone={q.status==='accepted'?'green':q.status==='rejected'?'red':q.status.includes('review')?'amber':'neutral'}>{statusText[q.status]??q.status}</Tag></button>)}</div>:<Empty title="Проектов пока нет" detail={role==='employee'?'Предложите рабочую задачу с проверяемым результатом.':'Заявки появятся здесь после отправки сотрудником.'}/>}</Panel>
-      {role==='employee'&&<Panel title="Предложить практический проект"><form className="form-stack" onSubmit={create}><label>Название<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} required maxLength={160}/></label><label>Описание работы<textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} required rows={3}/></label><label>Проверяемый результат<textarea value={form.deliverables} onChange={e=>setForm({...form,deliverables:e.target.value})} required rows={3}/></label><div className="form-pair"><label>Оценка часов<input type="number" min="1" max="200" value={form.estimated_hours} onChange={e=>setForm({...form,estimated_hours:Number(e.target.value)})}/></label><label>Ссылка на источник, если есть<input type="url" value={form.source_url} onChange={e=>setForm({...form,source_url:e.target.value})} placeholder="https://"/></label></div><fieldset><legend>Предлагаемые навыки</legend><div className="skill-picker">{(catalogLoad.data?.skills??[]).map(s=><label key={s.skill_id}><input type="checkbox" checked={form.skill_ids.includes(s.skill_id)} onChange={e=>setForm({...form,skill_ids:e.target.checked?[...form.skill_ids,s.skill_id]:form.skill_ids.filter(id=>id!==s.skill_id)})}/>{s.name}</label>)}</div></fieldset><label className="check-label"><input type="checkbox" checked={form.requires_resource} onChange={e=>setForm({...form,requires_resource:e.target.checked})}/>Нужны время или ресурсы руководителя</label><label className="check-label"><input type="checkbox" checked={form.requires_policy} onChange={e=>setForm({...form,requires_policy:e.target.checked})}/>Нужно новое правило зачёта</label><Submit busy={busy} disabled={!form.skill_ids.length}>Отправить на согласование</Submit></form></Panel>}</div>
-    <div className="side-stack">{quest?<Panel title="Заявка и решение"><div className="quest-detail"><Tag tone={quest.status==='accepted'?'green':'amber'}>{statusText[quest.status]??quest.status}</Tag><h3>{quest.title}</h3><p>{quest.description}</p><dl><dt>Результат</dt><dd>{quest.deliverables}</dd><dt>Навыки</dt><dd>{quest.skill_ids.map(id=>skillMap.get(id)??id).join(', ')||'Не указаны'}</dd><dt>Критерии</dt><dd>{quest.criteria||'Ожидают решения наставника'}</dd><dt>Ресурсы</dt><dd>{quest.requires_resource?quest.resource_approved?'Согласованы':'Требуется решение':'Не требуются'}</dd><dt>Политика</dt><dd>{quest.requires_policy?quest.policy_approved?'Согласована':'Требуется решение':'Действующее правило'}</dd><dt>Доказательство</dt><dd>{quest.evidence||'Ещё не подано'}</dd></dl>{quest.source_url&&<a href={quest.source_url} target="_blank" rel="noreferrer">Источник проекта ↗</a>}{quest.decisions?.length>0&&<div className="decision-history"><h4>История решений</h4>{quest.decisions.map((d,i)=><div key={i}><strong>{d.action}</strong> · {d.reason}<small>{formatDate(d.at)}</small></div>)}</div>}</div>
-      {role==='employee'&&quest.status==='needs_revision'&&!quest.advisor_approved&&<form className="form-stack separated" onSubmit={resubmit}><h4>Исправить предложение</h4><label>Название<input value={revisionDraft.title} onChange={e=>setRevisionDraft({...revisionDraft,title:e.target.value})} required/></label><label>Описание<textarea rows={3} value={revisionDraft.description} onChange={e=>setRevisionDraft({...revisionDraft,description:e.target.value})} required/></label><label>Проверяемый результат<textarea rows={3} value={revisionDraft.deliverables} onChange={e=>setRevisionDraft({...revisionDraft,deliverables:e.target.value})} required/></label><Submit busy={busy}>Отправить повторно</Submit></form>}
-      {role==='employee'&&(['ready','in_progress'].includes(quest.status)||(quest.status==='needs_revision'&&quest.advisor_approved))&&<form className="form-stack separated" onSubmit={sendEvidence}><label>Доказательство результата<textarea rows={4} value={evidence} onChange={e=>setEvidence(e.target.value)} required/></label><Submit busy={busy}>Отправить результат</Submit></form>}
-      {role==='advisor'&&['submitted','advisor_review','needs_revision'].includes(quest.status)&&<div className="form-stack separated"><label>Критерии проверки<textarea rows={3} value={criteria} onChange={e=>setCriteria(e.target.value)} required/></label><fieldset><legend>Подтверждаемый прирост по навыкам</legend>{quest.skill_ids.map(id=><div className="gain-row" key={id}><strong>{skillMap.get(id)??id}</strong><label>Прирост<input type="number" min="1" max="5" value={gainDraft[id]?.gain??1} onChange={e=>setGainDraft(v=>({...v,[id]:{...(v[id]??{gain:1,max_level:5}),gain:Number(e.target.value)}}))}/></label><label>Предел уровня<input type="number" min="1" max="5" value={gainDraft[id]?.max_level??5} onChange={e=>setGainDraft(v=>({...v,[id]:{...(v[id]??{gain:1,max_level:5}),max_level:Number(e.target.value)}}))}/></label></div>)}</fieldset><label className="check-label"><input type="checkbox" checked={requiresResource} onChange={e=>setRequiresResource(e.target.checked)}/>Нужно решение по времени или ресурсам</label><label className="check-label"><input type="checkbox" checked={requiresPolicy} onChange={e=>setRequiresPolicy(e.target.checked)}/>Требуется новое правило эквивалентности</label><label>Основание решения<textarea rows={2} value={reason} onChange={e=>setReason(e.target.value)} required/></label><div className="inline-actions"><button className="button primary small" disabled={busy||!reason.trim()||!criteria.trim()} onClick={()=>decide('review','approve')}>Согласовать</button><button className="button secondary small" disabled={busy||!reason.trim()} onClick={()=>decide('review','revise')}>На доработку</button><button className="button danger small" disabled={busy||!reason.trim()} onClick={()=>decide('review','reject')}>Отклонить</button></div></div>}
-      {role==='advisor'&&quest.status==='evidence_submitted'&&<div className="form-stack separated"><label>Основание решения<textarea rows={2} value={reason} onChange={e=>setReason(e.target.value)} required/></label><div className="inline-actions"><button className="button primary small" disabled={busy||!reason.trim()} onClick={()=>decide('accept','accept')}>Принять результат</button><button className="button secondary small" disabled={busy||!reason.trim()} onClick={()=>decide('review','revise')}>На доработку</button><button className="button danger small" disabled={busy||!reason.trim()} onClick={()=>decide('review','reject')}>Отклонить</button></div></div>}
-      {role==='manager'&&quest.requires_resource&&!quest.resource_approved&&<div className="form-stack separated"><label>Основание ресурсного решения<textarea rows={2} value={reason} onChange={e=>setReason(e.target.value)} required/></label><div className="inline-actions"><button className="button primary small" disabled={busy||!reason.trim()} onClick={()=>decide('resource','approve')}>Согласовать ресурс</button><button className="button danger small" disabled={busy||!reason.trim()} onClick={()=>decide('resource','reject')}>Отклонить</button></div></div>}
-      {role==='supervisor'&&quest.requires_policy&&!quest.policy_approved&&<div className="form-stack separated"><label>Основание правила<textarea rows={2} value={reason} onChange={e=>setReason(e.target.value)} required/></label><div className="inline-actions"><button className="button primary small" disabled={busy||!reason.trim()} onClick={()=>decide('policy','approve')}>Утвердить правило</button><button className="button danger small" disabled={busy||!reason.trim()} onClick={()=>decide('policy','reject')}>Отклонить</button></div></div>}</Panel>:<Panel title="Детали"><Empty title="Выберите проект"/></Panel>}</div></div></>;
-}
-
-function People({ session, revision, action, onSwitch }: { session: Session; revision: number; action: Action; onSwitch: (id:string)=>Promise<void> }) {
-  const employeesLoad=useLoad(endpoint.employees,[revision,session.identity.id]); const catalogLoad=useLoad(endpoint.catalog,[]); const helpLoad=useLoad(endpoint.helpRequests,[revision,session.identity.id]); const completionsLoad=useLoad(endpoint.completionRequests,[revision,session.identity.id]);
-  const [selected,setSelected]=useState<string|null>(null);const [search,setSearch]=useState('');const [visibleCount,setVisibleCount]=useState(30);const [eventId,setEventId]=useState('');const [due,setDue]=useState('');const [reason,setReason]=useState('');const [busy,setBusy]=useState(false);
-  const employees=employeesLoad.data?.employees??[]; const active=employees.find(e=>e.employee_id===selected)??employees[0];
-  const profileLoad=useLoad(()=>active?endpoint.profile(active.employee_id):Promise.resolve(null),[active?.employee_id,revision]);
-  const filtered=employees.filter(e=>`${e.full_name} ${e.department} ${e.role}`.toLowerCase().includes(search.toLowerCase()));
-  const visible=filtered.slice(0,visibleCount);
-  async function assign(e:React.FormEvent){e.preventDefault();if(!active)return;setBusy(true);const r=await action(()=>endpoint.assignment(active.employee_id,eventId,due),'Активность назначена.');if(r){setEventId('');setDue('');}setBusy(false);}
-  return <><Status loading={employeesLoad.busy} error={employeesLoad.error} retry={employeesLoad.refresh}/><div className="content-grid"><div className="main-stack"><Panel title={session.identity.role==='manager'?'Моя команда':session.identity.role==='advisor'?'Подопечные':'Сотрудники'} aside={<span className="muted">{employees.length} доступно</span>}><label className="search-box"><Search size={17}/><span className="sr-only">Поиск сотрудников</span><input value={search} onChange={e=>{setSearch(e.target.value);setVisibleCount(30);}} placeholder="Имя, отдел или роль"/></label>{filtered.length?<><div className="people-list">{visible.map(e=><button key={e.employee_id} className={`person-row ${active?.employee_id===e.employee_id?'selected':''}`} onClick={()=>setSelected(e.employee_id)}><span className="avatar small-avatar">{e.full_name.split(' ').slice(0,2).map(s=>s[0]).join('')}</span><span><strong>{e.full_name}</strong><small>{e.role} · {e.grade} · {e.department}</small></span><ArrowRight size={16}/></button>)}</div>{filtered.length>visibleCount&&<button className="button secondary small more-people" onClick={()=>setVisibleCount(n=>n+30)}>Показать ещё ({filtered.length-visibleCount})</button>}</>:<Empty title="Сотрудники не найдены" detail="Попробуйте другой запрос."/>}</Panel>
-  {session.identity.role==='manager'&&<Panel title="Запросы о затруднениях"><Status loading={helpLoad.busy} error={helpLoad.error} retry={helpLoad.refresh}/>{helpLoad.data?.requests.length?<div className="list">{helpLoad.data.requests.map((r,i)=><div className="row-item" key={i}><div><strong>{pretty(r.reason)}</strong><p>Сотрудник: {pretty(r.employee_id)} · {pretty(r.status)}</p></div>{r.status!=='resolved'&&<button className="button secondary small" onClick={async()=>{const why=window.prompt('Как вопрос был решён?');if(why?.trim())await action(()=>endpoint.resolveHelp(idOf(r),why.trim()),'Запрос закрыт.');}}>Отметить решение</button>}</div>)}</div>:<Empty title="Активных запросов нет"/>}</Panel>}
-  {session.identity.role==='advisor'&&<Panel title="Результаты на подтверждении"><Status loading={completionsLoad.busy} error={completionsLoad.error} retry={completionsLoad.refresh}/>{completionsLoad.data?.requests.length?<div className="list">{completionsLoad.data.requests.map((r,i)=><div className="row-item" key={i}><div><strong>{catalogLoad.data?.events.find(e=>e.event_id===r.event_id)?.title??pretty(r.event_id)}</strong><p>{pretty(r.employee_id)} · {pretty(r.evidence)}</p></div><button className="button primary small" onClick={async()=>{const why=window.prompt('Основание подтверждения результата');if(why?.trim())await action(()=>endpoint.acceptCompletion(idOf(r),why.trim()),'Выполнение подтверждено.');}}>Подтвердить</button></div>)}</div>:<Empty title="Результатов на проверке нет"/>}</Panel>}
-  </div><div className="side-stack">{active&&<Panel title="Профиль сотрудника"><Status loading={profileLoad.busy} error={profileLoad.error} retry={profileLoad.refresh}/>{profileLoad.data&&<div className="person-detail"><h3>{active.full_name}</h3><p>{active.department} · {active.role} · {active.grade}</p><div className="metric-line"><span>Цель</span><strong>{profileLoad.data.goal?`${profileLoad.data.goal.target_role} · ${profileLoad.data.goal.target_grade}`:'Не задана'}</strong></div><div className="metric-line"><span>Покрытие</span><strong>{formatNum(profileLoad.data.coverage)}%</strong></div><div className="metric-line"><span>Недельный бюджет</span><strong>{formatNum(profileLoad.data.weekly_budget)} ч</strong></div><h4>Требуют развития</h4>{profileLoad.data.gaps.some(g=>g.gap>0)?<ul className="simple-list">{profileLoad.data.gaps.filter(g=>g.gap>0).slice(0,6).map(g=><li key={g.skill_id}>{g.name}: {g.current} → {g.required}{g.critical?' · критический':''}</li>)}</ul>:<p className="muted">Разрывов по заданной цели нет.</p>}{session.identity.role==='hr'&&<button className="button secondary small" onClick={()=>onSwitch(`employee:${active.employee_id}`)}>Открыть демо-профиль сотрудника <ArrowRight size={15}/></button>}</div>}</Panel>}{(session.identity.role==='manager'||session.identity.role==='hr')&&active&&<Panel title="Назначить активность"><form className="form-stack" onSubmit={assign}><label>Активность<select value={eventId} onChange={e=>setEventId(e.target.value)} required><option value="">Выберите активность</option>{catalogLoad.data?.events.map(event=><option key={event.event_id} value={event.event_id}>{event.title}</option>)}</select></label><label>Срок<input type="date" value={due} onChange={e=>setDue(e.target.value)} required/></label><Submit busy={busy}>Назначить</Submit></form></Panel>}</div></div></>;
-}
-
-function Insights({ revision, action }: { revision: number; action: Action }) {
-  const dataLoad=useLoad(endpoint.analytics,[revision]); const [employees,setEmployees]=useState(''); const [history,setHistory]=useState(''); const [preview,setPreview]=useState<Record<string,unknown>|null>(null); const [busy,setBusy]=useState(false);
-  async function readFile(file:File|null, setter:(value:string)=>void){if(file)setter(await file.text());}
-  function importBody(){let parsed:unknown;try{parsed=JSON.parse(employees);}catch{throw new Error('Файл сотрудников должен быть корректным JSON.');}return {employees:parsed,history};}
-  async function validate(){setBusy(true);try{const result=await endpoint.importPreview(importBody());setPreview(result);}catch(e){await action(()=>Promise.reject(e),'',false);}finally{setBusy(false);}}
-  async function commit(){if(!preview||preview.valid!==true)return;setBusy(true);const result=await action(()=>endpoint.importCommit(importBody()),'Импорт завершён.');if(result){setPreview(null);setEmployees('');setHistory('');}setBusy(false);}
-  const analytics=dataLoad.data;
-  const counts=preview?.counts as {employees?:number;history?:number}|undefined;
-  const errors=Array.isArray(preview?.errors)?preview.errors.map((item: {row?:number;field?:string;message?:string})=>`Строка ${item.row??0} · ${item.field??'данные'}: ${item.message??'Некорректное значение'}`):[];
-  const warnings=Array.isArray(preview?.warnings)?preview.warnings:[];
-  return <div className="main-stack"><Status loading={dataLoad.busy} error={dataLoad.error} retry={dataLoad.refresh}/>{analytics&&<AnalyticsView value={analytics}/>}<Panel title="Импорт данных"><p className="muted">Загрузите JSON сотрудников; CSV истории необязателен для нового профиля. Предпросмотр не записывает данные; применение доступно только после успешной проверки.</p><div className="form-pair"><label>Сотрудники · JSON<input type="file" accept=".json,application/json" onChange={e=>readFile(e.target.files?.[0]??null,setEmployees)}/></label><label>История · CSV (необязательно)<input type="file" accept=".csv,text/csv" onChange={e=>readFile(e.target.files?.[0]??null,setHistory)}/></label></div><div className="inline-actions"><button className="button secondary" disabled={busy||!employees} onClick={validate}><FileUp size={16}/> Проверить импорт</button>{preview?.valid===true&&<button className="button primary" disabled={busy} onClick={commit}>Применить импорт</button>}</div>{preview&&<div className="import-preview"><Tag tone={preview.valid===true?'green':'red'}>{preview.valid===true?'Проверка пройдена':'Есть ошибки'}</Tag><p>Новых сотрудников: <strong>{counts?.employees??0}</strong> · записей истории: <strong>{counts?.history??0}</strong></p>{errors.length>0&&<ul>{errors.map((item,i)=><li key={i}>{pretty(item)}</li>)}</ul>}{warnings.length>0&&<details><summary>Предупреждения ({warnings.length})</summary><ul>{warnings.map((item,i)=><li key={i}>{pretty(item)}</li>)}</ul></details>}</div>}</Panel></div>;
-}
-interface Analytics {
-  as_of:string;scope:{profiles:number;history_records:number};
-  skill_gaps:{skill_id:string;name:string;requiring:number;with_gap:number;frequency_pct:number|null;average_gap:number|null;critical_with_gap:number}[];
-  critical_gaps:{employees:number};completions:{total:number;completed:number;rate_pct:number|null;by_status:Record<string,number>};
-  no_show:{eligible:number;no_show:number;rate_pct:number|null};mandatory_overdue:{count:number};
-  no_next_step:{total:number;by_reason:Record<string,number>};no_voluntary_completion_90d:{count:number};
-  catalog_gaps:{skill_id:string;name:string;employees:number}[];event_groups:{event_id:string;title:string;employees:number}[];
-  on_time:{eligible:number;on_time:number;rate_pct:number|null};caveats:string[];
-  no_next_employees?:{employee_id:string;full_name:string;reason:string}[];
-  mandatory_open?:{employee_id:string;event_id:string;title:string;due_date:string|null;status:string}[];
-  participation?:{event_id:string;title:string;total:number;completed:number;by_status:Record<string,number>}[];
-}
-const blockerNames:Record<string,string>={goal_missing:'Цель не указана',goal_skills_met:'Навыки цели достигнуты',prerequisites_blocked:'Нужна подготовка',audience_blocked:'Ограничение по роли или грейду',no_session:'Нет подходящей сессии',catalog_gap:'Пробел каталога',awaiting_approval:'Ожидает согласования'};
-function AnalyticsView({value}:{value:Record<string,unknown>}){
-  const a=value as unknown as Analytics;
-  return <>
-    <div className="analytics-overview"><div><span>Профилей в срезе</span><strong>{formatNum(a.scope?.profiles)}</strong></div><div><span>Завершённые записи</span><strong>{formatNum(a.completions?.completed)} <small>из {formatNum(a.completions?.total)}</small></strong></div><div><span>Завершаемость</span><strong>{formatNum(a.completions?.rate_pct)} <small>%</small></strong></div><div><span>Критический разрыв</span><strong>{formatNum(a.critical_gaps?.employees)} <small>сотрудников</small></strong></div></div>
-    <div className="content-grid"><Panel title="Разрывы навыков" aside={<span className="muted">Спрос по заданным целям</span>}><div className="table-scroll"><table><thead><tr><th>Навык</th><th>Есть разрыв</th><th>Частота</th><th>Средний разрыв</th><th>Критический</th></tr></thead><tbody>{a.skill_gaps?.map(s=><tr key={s.skill_id}><td>{s.name}</td><td>{s.with_gap} из {s.requiring}</td><td>{formatPercent(s.frequency_pct)}</td><td>{formatNum(s.average_gap)}</td><td>{s.critical_with_gap}</td></tr>)}</tbody></table></div>{!a.skill_gaps?.length&&<Empty title="Нет данных о требованиях цели"/>}</Panel><Panel title="Затруднения и покрытие"><div className="metric-line"><span>Нет следующего шага</span><strong>{formatNum(a.no_next_step?.total)}</strong></div><div className="metric-line"><span>Просрочено обязательных</span><strong>{formatNum(a.mandatory_overdue?.count)}</strong></div><div className="metric-line"><span>Нет добровольного завершения 90 дней</span><strong>{formatNum(a.no_voluntary_completion_90d?.count)}</strong></div><h4>Причины отсутствия шага</h4>{Object.entries(a.no_next_step?.by_reason??{}).length?<div className="breakdown">{Object.entries(a.no_next_step.by_reason).map(([key,count])=><div className="metric-line" key={key}><span>{blockerNames[key]??key}</span><strong>{count}</strong></div>)}</div>:<p className="muted">Причин пока нет.</p>}</Panel></div>
-    <div className="content-grid"><Panel title="Участие и своевременность"><div className="metric-line"><span>Завершено</span><strong>{a.completions?.completed} / {a.completions?.total} · {formatPercent(a.completions?.rate_pct)}</strong></div>{Object.entries(a.completions?.by_status??{}).map(([key,count])=><div className="metric-line" key={key}><span>{statusText[key]??key}</span><strong>{count}</strong></div>)}<h4>Сессии и сроки</h4><div className="metric-line"><span>Неявка на состоявшиеся сессии</span><strong>{a.no_show?.no_show} / {a.no_show?.eligible} · {formatPercent(a.no_show?.rate_pct)}</strong></div><div className="metric-line"><span>Завершено в срок при достоверных датах</span><strong>{a.on_time?.on_time} / {a.on_time?.eligible} · {formatPercent(a.on_time?.rate_pct)}</strong></div></Panel><Panel title="Пробелы предложения"><p className="muted">Навыки, для которых есть спрос, но не найден подходящий достижимый путь.</p>{a.catalog_gaps?.length?<div className="list">{a.catalog_gaps.map(s=><div className="metric-line" key={s.skill_id}><span>{s.name}</span><strong>{s.employees} сотрудников</strong></div>)}</div>:<Empty title="Пробелов каталога в срезе нет"/>}<h4>Возможные группы на активность</h4>{a.event_groups?.length?<div className="list">{a.event_groups.slice(0,12).map(e=><div className="metric-line" key={e.event_id}><span>{e.title}</span><strong>{e.employees}</strong></div>)}</div>:<p className="muted">Подходящих групп пока нет.</p>}</Panel></div>
-    {(a.no_next_employees?.length||a.mandatory_open?.length||a.participation?.length)?<Panel title="Записи за показателями"><p className="muted">Раскрытие помогает проверить агрегаты по разрешённым исходным записям. Сотрудники не ранжируются.</p>{a.no_next_employees?.length?<details className="analytics-details"><summary>Сотрудники без следующего шага · {a.no_next_employees.length}</summary><div className="table-scroll"><table><thead><tr><th>Сотрудник</th><th>Основная причина</th></tr></thead><tbody>{a.no_next_employees.map(e=><tr key={e.employee_id}><td>{e.full_name}</td><td>{blockerNames[e.reason]??e.reason}</td></tr>)}</tbody></table></div></details>:null}{a.mandatory_open?.length?<details className="analytics-details"><summary>Открытые обязательные назначения · {a.mandatory_open.length}</summary><div className="table-scroll"><table><thead><tr><th>Сотрудник</th><th>Активность</th><th>Срок</th><th>Состояние</th></tr></thead><tbody>{a.mandatory_open.map((e,i)=><tr key={`${e.employee_id}-${e.event_id}-${i}`}><td>{e.employee_id}</td><td>{e.title}</td><td>{formatDate(e.due_date)}</td><td>{statusText[e.status]??e.status}</td></tr>)}</tbody></table></div></details>:null}{a.participation?.length?<details className="analytics-details"><summary>Участие по активностям · {a.participation.length}</summary><div className="table-scroll"><table><thead><tr><th>Активность</th><th>Завершено</th><th>Всего записей</th><th>Другие состояния</th></tr></thead><tbody>{a.participation.map(e=><tr key={e.event_id}><td>{e.title}</td><td>{e.completed}</td><td>{e.total}</td><td>{Object.entries(e.by_status).filter(([s])=>s!=='completed').map(([s,n])=>`${statusText[s]??s}: ${n}`).join(' · ')}</td></tr>)}</tbody></table></div></details>:null}</Panel>:null}
-    {a.caveats?.length>0&&<Notice tone="warning"><strong>Ограничения расчёта:</strong> {a.caveats.map(c=>({
-      'Source self_paced date is enrollment, not confirmed completion time.':'Дата self_paced в источнике означает зачисление, а не подтверждённое завершение.',
-      'Historical completion time without exact completed_at uses date as a proxy.':'Если точной даты завершения нет, историческая дата используется как приближение.',
-      'Catalog gaps reflect currently eligible direct coverage, not proof that no prerequisite path exists.':'Пробелы каталога отражают прямое доступное покрытие сейчас; они не доказывают отсутствие пути через подготовительные шаги.'
-    } as Record<string,string>)[c]??c).join(' ')}</Notice>}
-  </>;
-}
-
-function CatalogView(){const dataLoad=useLoad(endpoint.catalog,[]);const [query,setQuery]=useState('');const [selected,setSelected]=useState<string|null>(null);const events=dataLoad.data?.events??[];const filtered=events.filter(e=>`${e.title} ${e.description} ${e.type}`.toLowerCase().includes(query.toLowerCase()));const active=events.find(e=>e.event_id===selected);const skills=new Map((dataLoad.data?.skills??[]).map(s=>[s.skill_id,s.name]));return <><Status loading={dataLoad.busy} error={dataLoad.error} retry={dataLoad.refresh}/>{dataLoad.data&&<div className="content-grid"><Panel title="Активности" aside={<span className="muted">{filtered.length} из {events.length}</span>}><label className="search-box"><Search size={17}/><span className="sr-only">Поиск активности</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по названию, типу, описанию"/></label><div className="catalog-list">{filtered.map(e=><button key={e.event_id} className="catalog-row" onClick={()=>setSelected(e.event_id)}><div><strong>{e.title}</strong><span>{e.type} · {e.format} · {e.duration_hours} ч</span></div>{e.mandatory?<Tag tone="amber">Обязательное</Tag>:<ArrowRight size={16}/>}</button>)}</div></Panel><Panel title="Детали активности">{active?<div className="quest-detail"><h3>{active.title}</h3><p>{active.description}</p><dl><dt>Формат</dt><dd>{active.format}</dd><dt>Продолжительность</dt><dd>{active.duration_hours} ч</dd><dt>Навыки</dt><dd>{active.develops_skills.map(g=>`${skills.get(g.skill_id)??g.skill_id} (+${g.gain}, предел ${g.max_level})`).join(', ')||'Не указаны'}</dd><dt>Предварительные требования</dt><dd>{Object.entries(active.prerequisites).map(([id,l])=>`${skills.get(id)??id} ≥ ${l}`).join(', ')||'Нет'}</dd><dt>Сессии</dt><dd>{active.upcoming_sessions.map(formatDate).join(', ')||'Не указаны'}</dd></dl></div>:<Empty title="Выберите активность" detail="Описание, навыки и предварительные требования появятся здесь."/>}</Panel></div>}</>}
-function ExternalSearch({session,locale,onPropose}:{session:Session;locale:Locale;onPropose:(seed:{title:string;description:string;source_url:string;skill_id:string})=>void}){
-  const catalogLoad=useLoad(endpoint.catalog,[]);const profileLoad=useLoad(()=>session.identity.employee_id?endpoint.profile(session.identity.employee_id):Promise.resolve(null),[session.identity.employee_id]);
-  const [skillId,setSkillId]=useState('');const [level,setLevel]=useState(2);const [format,setFormat]=useState<'any'|'online'|'offline'|'self_paced'>('any');const [results,setResults]=useState<ExternalResults|null>(null);const [error,setError]=useState('');const [busy,setBusy]=useState(false);
-  useEffect(()=>{const top=profileLoad.data?.gaps.find(g=>g.gap>0);if(top&&!skillId){setSkillId(top.skill_id);setLevel(top.required);}},[profileLoad.data?.employee.employee_id]);
-  async function search(e:React.FormEvent){e.preventDefault();if(!skillId)return;setBusy(true);setError('');setResults(null);try{setResults(await endpoint.externalSearch(skillId,level,locale,format==='any'?undefined:format));}catch(e){setError(e instanceof Error?e.message:'Поиск сейчас недоступен.');}finally{setBusy(false);}}
-  return <div className="main-stack"><Panel title="Поиск по нужному навыку"><p className="muted">Внешняя возможность не является утверждённой программой компании. Стоимость, длительность и зачёт остаются неизвестными до проверки.</p><form className="external-form" onSubmit={search}><label>Навык<select value={skillId} onChange={e=>setSkillId(e.target.value)} required><option value="">Выберите навык</option>{catalogLoad.data?.skills.map(s=><option value={s.skill_id} key={s.skill_id}>{s.name}</option>)}</select></label><label>Целевой уровень<input type="number" min="0" max="5" value={level} onChange={e=>setLevel(Number(e.target.value))} required/></label><label>Формат<select value={format} onChange={e=>setFormat(e.target.value as typeof format)}><option value="any">Любой</option><option value="online">Онлайн</option><option value="offline">Офлайн</option><option value="self_paced">Самостоятельно</option></select></label><Submit busy={busy}>Искать источники</Submit></form></Panel>
-  {busy&&<div className="skeleton-stack"><div/><div/></div>}{error&&<Notice tone="error">{error}</Notice>}{results&&<Panel title="Найденные источники" aside={<Tag tone={results.mode==='live_search'?'green':'amber'}>{results.mode==='live_search'?'Внешний поиск':'Поиск недоступен'}</Tag>}>{results.warning&&<Notice tone="warning">{results.warning}</Notice>}{results.opportunities.length?<div className="external-results">{results.opportunities.map((o,i)=><article key={`${o.url}-${i}`} className="external-result"><div><h3>{o.title}</h3><p>{o.excerpt}</p><div className="detail-facts"><span>Проверено {formatDate(o.checked_at)}</span><span>Стоимость неизвестна</span><span>Время неизвестно</span><span>Компания не согласовала</span></div><a href={o.url} target="_blank" rel="noreferrer">Открыть источник ↗</a></div><button className="button secondary small" onClick={()=>onPropose({title:o.title,description:o.excerpt,source_url:o.url,skill_id:skillId})}>Предложить как проект <ArrowRight size={15}/></button></article>)}</div>:<Empty title="Проверенные источники не найдены" detail="Попробуйте другой навык или формат. Каталог компании доступен отдельно."/>}</Panel>}</div>;
-}
-function RewardsView({revision,action}:{revision:number;action:Action}){const load=useLoad(endpoint.rewards,[revision]);return <><Status loading={load.busy} error={load.error} retry={load.refresh}/>{load.data&&<><section className="reward-summary"><Gift size={28}/><div><span>Доступно сейчас</span><strong>{formatNum(load.data.balance)} XP</strong><small>Всего подтверждённо заработано: {formatNum(load.data.earned)} XP</small></div></section><div className="content-grid"><Panel title="Возможности за баллы"><div className="reward-list">{load.data.items.map(item=><div className="reward-row" key={item.id}><div><h3>{item.title}</h3><p>{item.description}</p><strong>{item.cost} XP</strong></div><button className="button secondary small" disabled={load.data!.balance<item.cost} title={load.data!.balance<item.cost?'Недостаточно баллов':undefined} onClick={()=>action(()=>endpoint.redeem(item.id),'Награда запрошена.')}>Выбрать</button></div>)}</div></Panel><Panel title="История баллов"><ShortTable rows={load.data.ledger}/></Panel></div><Notice>Награды в демо показывают пример внутренней политики. Они не являются обещанием банка.</Notice></>}</>}
-function AuditView({session,revision,action}:{session:Session;revision:number;action:Action}){const load=useLoad(endpoint.audit,[revision,session.identity.id]);return <><Status loading={load.busy} error={load.error} retry={load.refresh}/><Panel title="Журнал решений" aside={<Tag>{load.data?.events.length??0} записей</Tag>}><ShortTable rows={load.data?.events??[]}/></Panel><Notice>Исходные требования грейда нельзя переопределить решением по отдельному проекту. Правила эквивалентности проходят отдельное согласование в разделе «Практические проекты».</Notice></>}
-
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <I18nProvider>
+      <App />
+    </I18nProvider>
+  </React.StrictMode>,
+);
