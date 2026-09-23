@@ -816,7 +816,9 @@ export function EmployeePath({
               </div>
               {selectedCandidate?.reasons.length ? (
                 <Notice tone="warning">
-                  {selectedCandidate.reasons.join(" · ")}
+                  {selectedCandidate.reasons
+                    .map((reason) => enumText("reason", reason))
+                    .join(" · ")}
                 </Notice>
               ) : null}
               {previewBusy ? (

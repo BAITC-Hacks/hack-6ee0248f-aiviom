@@ -24,6 +24,12 @@ export function RewardsView({
   const { locale, t, catalogText } = useI18n();
   const load = useLoad(endpoint.rewards, [revision]);
   const num = (value: number | null | undefined) => formatNum(locale, value);
+  const ledgerAmount = (row: Record<string, unknown>): number | null => {
+    const value = row.amount ?? row.delta;
+    if (value == null || value === "") return null;
+    const amount = Number(value);
+    return Number.isFinite(amount) ? amount : null;
+  };
   return (
     <>
       <Status loading={load.busy} error={load.error} retry={load.refresh} />
@@ -100,28 +106,36 @@ export function RewardsView({
                     key: "action",
                     title: t("common.action"),
                     render: (row) =>
-                      t(
-                        Number(row.amount) >= 0
-                          ? "ledger.earned"
-                          : "ledger.redeemed",
-                      ),
+                      ledgerAmount(row) == null
+                        ? t("common.unknown")
+                        : t(
+                            ledgerAmount(row)! >= 0
+                              ? "ledger.earned"
+                              : "ledger.redeemed",
+                          ),
                   },
                   {
                     key: "amount",
                     title: t("rewards.points"),
-                    render: (row) => num(Number(row.amount ?? row.delta ?? 0)),
+                    render: (row) => num(ledgerAmount(row)),
                   },
                   {
                     key: "reason",
                     title: t("common.reason"),
-                    render: (row) =>
-                      row.reward_id
-                        ? catalogText(
-                            asText(row.reward_id),
-                            "title",
-                            asText(row.reward_id),
-                          )
-                        : asText(row.reason ?? row.source ?? row.source_id),
+                    render: (row) => {
+                      if (row.reward_id) {
+                        const id = asText(row.reward_id);
+                        const item = load.data?.items.find(
+                          (candidate) => candidate.id === id,
+                        );
+                        return item
+                          ? catalogText(id, "title", item.title)
+                          : t("ledger.redeemed");
+                      }
+                      return ledgerAmount(row) == null
+                        ? t("common.unknown")
+                        : t("ledger.earned");
+                    },
                   },
                 ]}
               />

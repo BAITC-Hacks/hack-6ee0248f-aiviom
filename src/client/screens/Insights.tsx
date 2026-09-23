@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FileUp, Trash2 } from "lucide-react";
 import { endpoint } from "../api";
 import { useI18n } from "../i18n";
@@ -187,11 +187,19 @@ export function Insights({
   const [busy, setBusy] = useState(false);
   const [fileError, setFileError] = useState("");
   const fileRevision = useRef(0);
+  const previewLocale = useRef(locale);
   const fileRead = useRef<Record<UploadKind, number>>({
     employees: 0,
     history: 0,
   });
   const num = (value: number | null | undefined) => formatNum(locale, value);
+  useEffect(() => {
+    if (previewLocale.current === locale) return;
+    previewLocale.current = locale;
+    fileRevision.current += 1;
+    setPreview(null);
+    setFileError("");
+  }, [locale]);
   function invalidate() {
     fileRevision.current += 1;
     setPreview(null);
