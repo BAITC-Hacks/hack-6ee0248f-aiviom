@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import type {
   Credit,
+  ConfirmedResult,
   Dataset,
   Goal,
   Identity,
@@ -53,6 +54,7 @@ export interface Audit {
   at: string;
 }
 export interface State {
+  completion_results?: ConfirmedResult[];
   version: number;
   as_of: string;
   dataset: Dataset;
