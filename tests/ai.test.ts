@@ -27,12 +27,17 @@ function modelChoice(facts: RecommendationFacts, id = 'other') {
 
 test('model can choose a real lower-priority activity, with validated facts', async () => {
   let calls = 0;
-  const provider: RecommendationProvider = { async choose(facts) { calls++; assert.equal(facts.role, 'Analyst'); assert.equal(JSON.stringify(facts).includes('Private Person'), false); return { output: modelChoice(facts), usage: { input_tokens: 100, output_tokens: 50 } }; } };
+  const provider: RecommendationProvider = { async choose(facts) { calls++; assert.equal(facts.role, 'Analyst'); assert.equal(JSON.stringify(facts).includes('Private Person'), false); return { output: { ...modelChoice(facts), warnings: ['history:similar:other internal reference'] }, usage: { input_tokens: 100, output_tokens: 50 } }; } };
   const recommend = createRecommender(provider);
   const result = await recommend(profile(), { apiKey: 'test' });
   assert.equal(result.mode, 'live_ai');
   assert.deepEqual(result.recommendations.map(r => r.event_id), ['other']);
   assert.equal(result.recommendations[0].factor_keys.length, 4);
+  assert.match(result.recommendations[0].reason, /Грейд: Junior/);
+  assert.match(result.recommendations[0].reason, /Цель: Analyst \/ Middle/);
+  assert.match(result.recommendations[0].reason, /Analysis 1→3 \(2 ур\.\)/);
+  assert.match(result.recommendations[0].reason, /История: истории добровольных активностей нет/);
+  assert.deepEqual(result.warnings, []);
   assert.equal(result.usage?.input_tokens, 100);
   const hit = await recommend(profile(), { apiKey: 'test' });
   assert.equal(hit.mode, 'cached_live_ai');
@@ -90,6 +95,21 @@ test('invalid IDs, missing factor evidence, and prompt injection fail closed', a
   }
 });
 
+test('four factor groups are mandatory and failure warnings use safe codes', async () => {
+  const invalid = createRecommender({ async choose(facts) {
+    const output = modelChoice(facts);
+    output.recommendations[0].factor_keys = ['grade', 'skill_gap', 'history'];
+    return { output };
+  } });
+  const result = await invalid(profile(), { apiKey: 'test' });
+  assert.equal(result.mode, 'rules_fallback');
+  assert.match(result.warnings[0], /^AI_INVALID_OUTPUT:/);
+  const timeout = createRecommender({ async choose() { const error = new Error('private details must not escape'); error.name = 'APIConnectionTimeoutError'; throw error; } });
+  const timed = await timeout(profile(), { apiKey: 'test' });
+  assert.match(timed.warnings[0], /^AI_TIMEOUT:/);
+  assert.equal(timed.warnings[0].includes('private details'), false);
+});
+
 test('fallback and empty states remain honest', async () => {
   const noKey = await createRecommender()(profile());
   assert.equal(noKey.mode, 'rules_fallback');
@@ -142,4 +162,17 @@ test('external search accepts only public HTTPS URLs returned by the search tool
   assert.equal(result.opportunities[0].company_approved, false);
   assert.equal((await search(input, { apiKey: 'test', model: 'unapproved-model' })).mode, 'unavailable');
   assert.equal(calls, 1);
+});
+
+test('external search forwards controlled metadata only', async () => {
+  const search = createExternalSearch({ async search(input) {
+    assert.equal(input.skill_name, 'Analysis');
+    assert.equal(input.language, 'ru');
+    assert.equal(input.format, undefined);
+    assert.deepEqual(input.constraints, ['remote_only']);
+    return { output: { opportunities: [] }, sourceUrls: [] };
+  } });
+  const result = await search({ skill_id: 's1', skill_name: ' Analysis ', desired_level: 3, language: 'My personal name and history', format: 'visit my private office', constraints: ['remote_only', 'employee secret detail'] }, { apiKey: 'test' });
+  assert.equal(result.mode, 'live_search');
+  assert.equal(result.opportunities.length, 0);
 });
