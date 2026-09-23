@@ -221,7 +221,7 @@ function validate(output: unknown, facts: RecommendationFacts): { recommendation
       if (typeof rec.alternative_event_id !== 'string' || !ids.has(rec.alternative_event_id) || rec.alternative_event_id === rec.event_id) throw new Error('Invalid AI alternative');
     } else if (rec.alternative_event_id !== null) throw new Error('Unexpected AI alternative');
     if (typeof rec.alternative_reason !== 'string' || !rec.alternative_reason.trim() || rec.alternative_reason.length > 400) throw new Error('Invalid AI comparison');
-    recommendations.push({ event_id: rec.event_id, reason: verifiedReason(facts, rec.event_id, '' ).trim(), ...presentation(facts, rec.event_id), factor_keys: rec.factor_keys as string[], evidence_ids: rec.evidence_ids as string[], alternative_event_id: rec.alternative_event_id as string | null, alternative_reason: comparison(facts, rec.event_id, rec.alternative_event_id as string | null) });
+    recommendations.push({ event_id: rec.event_id, reason: verifiedReason(facts, rec.event_id, rec.reason.trim()), ...presentation(facts, rec.event_id), summary: rec.reason.trim(), factor_keys: rec.factor_keys as string[], evidence_ids: rec.evidence_ids as string[], alternative_event_id: rec.alternative_event_id as string | null, alternative_reason: rec.alternative_reason.trim() });
   }
   // Model warnings are unverified free text and may contain internal fact IDs or claims.
   return { recommendations, warnings: [] };
@@ -260,11 +260,11 @@ export function createRecommender(provider: RecommendationProvider = sdkProvider
     const facts = buildRecommendationFacts(profile, locale);
     const available = Boolean(options.apiKey?.trim());
     const base = { generated_at: new Date().toISOString(), facts_hash, latency_ms: 0, locale };
-    if (!profile.goal) return { ...base, mode: 'unavailable', recommendations: [], warnings: [serverMessage(locale, 'warning.no_goal')], model: null, latency_ms: Date.now() - started };
-    if (!profile.gaps.some(gap => gap.gap > 0)) return { ...base, mode: 'unavailable', recommendations: [], warnings: [serverMessage(locale, 'warning.goal_met')], model: null, latency_ms: Date.now() - started };
-    if (!facts.candidates.length) return { ...base, mode: 'unavailable', recommendations: [], warnings: [serverMessage(locale, 'warning.no_candidates')], model: null, latency_ms: Date.now() - started };
-    if (!available) return { ...base, mode: 'rules_fallback', recommendations: fallback(profile, facts), warnings: [serverMessage(locale, 'warning.ai_offline')], model: null, latency_ms: Date.now() - started };
-    if (!ALLOWED_MODELS.has(model)) return { ...base, mode: 'rules_fallback', recommendations: fallback(profile, facts), warnings: [serverMessage(locale, 'warning.ai_model')], model: null, latency_ms: Date.now() - started };
+    if (!profile.goal) return { ...base, mode: 'unavailable', recommendations: [], warnings: [serverMessage(locale, 'warning.no_goal')], warning_codes: ['NO_GOAL'], model: null, latency_ms: Date.now() - started };
+    if (!profile.gaps.some(gap => gap.gap > 0)) return { ...base, mode: 'unavailable', recommendations: [], warnings: [serverMessage(locale, 'warning.goal_met')], warning_codes: ['GOAL_MET'], model: null, latency_ms: Date.now() - started };
+    if (!facts.candidates.length) return { ...base, mode: 'unavailable', recommendations: [], warnings: [serverMessage(locale, 'warning.no_candidates')], warning_codes: ['NO_CANDIDATES'], model: null, latency_ms: Date.now() - started };
+    if (!available) return { ...base, mode: 'rules_fallback', recommendations: fallback(profile, facts), warnings: [serverMessage(locale, 'warning.ai_offline')], warning_codes: ['AI_OFFLINE'], model: null, latency_ms: Date.now() - started };
+    if (!ALLOWED_MODELS.has(model)) return { ...base, mode: 'rules_fallback', recommendations: fallback(profile, facts), warnings: [serverMessage(locale, 'warning.ai_model')], warning_codes: ['AI_MODEL_NOT_ALLOWED'], model: null, latency_ms: Date.now() - started };
     const cached = cache.get(facts_hash);
     if (cached) return { ...copy(cached), mode: 'cached_live_ai', latency_ms: Date.now() - started };
     const existing = inFlight.get(facts_hash);
@@ -283,12 +283,13 @@ export function createRecommender(provider: RecommendationProvider = sdkProvider
         if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value!);
         return result;
       } catch (error) {
-        const warning = error instanceof AIOutputError
-          ? serverMessage(locale, 'warning.ai_invalid')
+        const warningKey = error instanceof AIOutputError
+          ? 'warning.ai_invalid'
           : error instanceof APIConnectionTimeoutError || error instanceof Error && /timeout/i.test(error.name)
-            ? serverMessage(locale, 'warning.ai_timeout')
-            : serverMessage(locale, 'warning.ai_unavailable');
-        return { ...base, mode: 'rules_fallback', recommendations: fallback(profile, facts), warnings: [warning], model: null, latency_ms: Date.now() - started };
+            ? 'warning.ai_timeout'
+            : 'warning.ai_unavailable';
+        const warningCode = { 'warning.ai_invalid': 'AI_INVALID_OUTPUT', 'warning.ai_timeout': 'AI_TIMEOUT', 'warning.ai_unavailable': 'AI_UNAVAILABLE' }[warningKey];
+        return { ...base, mode: 'rules_fallback', recommendations: fallback(profile, facts), warnings: [serverMessage(locale, warningKey)], warning_codes: [warningCode], model: null, latency_ms: Date.now() - started };
       } finally { inFlight.delete(facts_hash); }
     })();
     inFlight.set(facts_hash, work);
