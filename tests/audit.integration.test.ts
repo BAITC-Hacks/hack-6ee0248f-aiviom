@@ -139,15 +139,19 @@ test('different demo workspaces cannot read or mutate each other\'s imports', as
 test('mandatory assignment enforces role, manager scope, due date and uniqueness', async () => {
   const c = client();
   const session = await c.ok('/api/session');
-  const id = session.identity.employee_id;
+  const template = await c.ok(`/api/employees/${session.identity.employee_id}/profile`);
+  const managerId = session.identities.find((x:any)=>x.role==='manager').employee_id;
+  const id = 'AUDIT_ASSIGN_NEW';
+  await c.switchTo('hr');
+  await c.ok('/api/import/commit','POST',{employees:[{...employeeFrom(template,id),manager_id:managerId}]});
   const catalog = await c.ok('/api/catalog');
-  const profile = await c.ok(`/api/employees/${id}/profile`);
-  const mandatory = catalog.events.find((e:any) => e.mandatory && !profile.history.some((h:any) => h.event_id===e.event_id && h.status!=='completed'));
-  assert.ok(mandatory, 'fixture needs an unassigned mandatory event');
+  const mandatory = catalog.events.find((e:any) => e.mandatory && e.target_roles.includes(template.employee.role) && e.target_grades.includes(template.employee.grade));
+  assert.ok(mandatory, 'fixture needs an applicable mandatory event');
   const payload = {employee_id:id,event_id:mandatory.event_id,due_date:'2026-10-10'};
+  await c.switchTo(`employee:${id}`);
   assert.equal((await c.request('/api/assignments','POST',payload)).status,403);
   await c.switchTo('hr');
-  const outside = (await c.ok('/api/employees')).employees.find((e:any)=>e.manager_id!==session.identities.find((x:any)=>x.role==='manager').employee_id && e.employee_id!==id);
+  const outside = (await c.ok('/api/employees')).employees.find((e:any)=>e.manager_id!==managerId && e.employee_id!==id);
   assert.ok(outside);
   await c.switchTo('manager');
   assert.equal((await c.request('/api/assignments','POST',{...payload,employee_id:outside.employee_id})).status,403);
@@ -160,10 +164,13 @@ test('mandatory assignment enforces role, manager scope, due date and uniqueness
 test('impossible due date is rejected before writing assignment', async () => {
   const c = client();
   const session = await c.ok('/api/session');
-  const id = session.identity.employee_id;
+  const template = await c.ok(`/api/employees/${session.identity.employee_id}/profile`);
+  const managerId = session.identities.find((x:any)=>x.role==='manager').employee_id;
+  const id = 'AUDIT_INVALID_DUE';
+  await c.switchTo('hr');
+  await c.ok('/api/import/commit','POST',{employees:[{...employeeFrom(template,id),manager_id:managerId}]});
   const catalog = await c.ok('/api/catalog');
-  const profile = await c.ok(`/api/employees/${id}/profile`);
-  const mandatory = catalog.events.find((e:any)=>e.mandatory&&!profile.history.some((h:any)=>h.event_id===e.event_id&&h.status!=='completed'));
+  const mandatory = catalog.events.find((e:any)=>e.mandatory&&e.target_roles.includes(template.employee.role)&&e.target_grades.includes(template.employee.grade));
   assert.ok(mandatory);
   await c.switchTo('manager');
   const result = await c.request('/api/assignments','POST',{employee_id:id,event_id:mandatory.event_id,due_date:'2026-12-32'});
