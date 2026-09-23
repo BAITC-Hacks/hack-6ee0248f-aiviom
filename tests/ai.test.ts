@@ -34,7 +34,7 @@ test('model can choose a real lower-priority activity, with validated facts', as
   assert.equal(result.mode, 'live_ai');
   assert.deepEqual(result.recommendations.map(r => r.event_id), ['other']);
   assert.equal(result.recommendations[0].factor_keys.length, 4);
-  assert.match(result.recommendations[0].summary!, /критический навык/);
+  assert.match(result.recommendations[0].summary!, /уменьшает разрыв по критическому навыку/);
   assert.match(result.recommendations[0].alternative_reason, /вклад в цель/);
   assert.match(result.recommendations[0].reason, /Грейд: Начальный/);
   assert.match(result.recommendations[0].reason, /Цель: Analyst \/ Средний/);
@@ -143,6 +143,22 @@ test('unsupported model text, numbers and priority claims fail closed', async ()
     assert.deepEqual(result.warning_codes, ['AI_INVALID_OUTPUT']);
     assert.equal(JSON.stringify(result).includes('Guaranteed'), false);
   }
+});
+
+test('participation priority rejects a negative history balance and recent status is localized', async () => {
+  const p = profile();
+  for (const [i, status] of ['completed', 'no_show', 'declined'] .entries()) p.history.push({ record_id: `history-${i}`, employee_id: 'emp-1', event_id: 'past', date: `2026-09-0${i + 1}`, due_date: null, status, completion_pct: status === 'completed' ? 100 : 0, score: null, feedback_rating: null, assigned_by: 'self' });
+  const past = event('past');
+  assert.equal(buildRecommendationFacts(p, 'ru', [past]).candidates[0].relevant_history.recent?.status, 'Отказано');
+  assert.equal(buildRecommendationFacts(p, 'kk', [past]).candidates[0].relevant_history.recent?.status, 'Бас тартылды');
+  const recommender = createRecommender({ async choose(facts) {
+    const output = modelChoice(facts);
+    output.recommendations[0].priority_code = 'participation_fit';
+    return { output };
+  } });
+  const result = await recommender(p, { apiKey: 'test', catalogEvents: [past] });
+  assert.equal(result.mode, 'rules_fallback');
+  assert.deepEqual(result.warning_codes, ['AI_INVALID_OUTPUT']);
 });
 
 test('invalid IDs, missing factor evidence, and prompt injection fail closed', async () => {
@@ -275,10 +291,10 @@ test('RU, KK and EN get separate verified presentations and AI cache entries', a
     assert.equal(choice.reason.includes(choice.summary!), true);
     assert.ok(choice.alternative_reason);
     if (locale === 'kk') {
-      assert.match(choice.summary!, /маңызды дағдысын/);
+      assert.match(choice.summary!, /маңызды дағды алшақтығын азайтады/);
       assert.match(choice.facts![0].label, /Деңгей/);
     }
-    if (locale === 'en') assert.match(choice.summary!, /critical target-level/);
+    if (locale === 'en') assert.match(choice.summary!, /reduces a critical target-level/);
     assert.equal((await rec(profile(), { apiKey: 'test', locale })).mode, 'cached_live_ai');
   }
   assert.equal(calls, 3);
