@@ -1,13 +1,5 @@
 # Career Quest · AIVIOM
 
-**Финальная версия HackAlem: актуальный `main`, включая Atlas и усиление Must-have.** Предыдущие контрольные версии сохранены тегами `submission-2026-09-23` и `atlas-2026-09-23`; история не переписана. Точный проверенный application SHA и результаты указаны в [паспорте релиза](docs/RELEASE_MANIFEST.json), фактический deployment SHA — в [health](https://career.aiviom.ai/health).
-
-HackAlem AI, **Case 1 Halyk Bank**. AI-навигатор развития: профиль → цель и разрывы навыков → объяснимый следующий шаг → проверенный результат → пересчёт навыков и HR-срез.
-
-Приложение использует исходный синтетический набор организатора (200 сотрудников, 40 активностей, 60 навыков, 32 профиля роль/грейд, 2743 записи истории). Публичного рейтинга сотрудников нет. Соответствие навыкам не гарантирует повышения; XP не является грейдом.
-
-Проверенный application SHA: `63a9aa2773507f8dd9a674f6e46d21203bf1cefc`. Финальный artifact: тег `must-have-2026-09-23` (`git rev-parse must-have-2026-09-23`); точный SHA работающего контейнера возвращает `/health`. Документационный release commit содержит тот же код приложения.
-
 AI-powered career development navigator for **HackAlem AI · Case 1 — Halyk Bank**.
 
 > **Deployed demo:** **https://career.aiviom.ai**
@@ -249,10 +241,6 @@ All supported variables are listed in `.env.example`.
 
 ### AI behavior
 
-The model selects and orders eligible useful activities using grade, critical gaps, complete relevant history (primarily matched by skills), and target requirements. The server validates candidate IDs, priority codes, candidate-supported evidence and all four factor groups. Factual explanations and numeric effects are rendered by the server. See [AI](docs/AI.md) and [domain formulas](docs/FORMULAS.md).
-
-The gateway rebuilds candidates using its server-owned catalog and accepts no arbitrary prompt, model or URL. Workspace cookies, request size/rate limits, a model allowlist and a shared budget ledger constrain access. The conservative $0.05 reservation per call is not a claim of actual API cost; the ledger does not track other team applications.
-
 The recommendation endpoint has explicit modes:
 
 - `live_ai` — validated response from a live model.
@@ -350,7 +338,7 @@ Expected result: preview does **not** permanently change skills or history.
 4. Switch back to **Employee**.
 5. Reopen the profile/rewards.
 
-Expected result: accepted completion updates the real profile once and persists a confirmed-result receipt with skill levels before/after, coverage, next steps and XP in the same SQLite transaction as the credit and reward. Repeating the same accepted operation must not grant a duplicate credit or receipt.
+Expected result: accepted completion can update effective skills and XP once. Repeating the same accepted operation must not grant a duplicate credit.
 
 ### Step 5 — verify the side-quest workflow
 
@@ -367,7 +355,7 @@ Expected result: approval of a proposal alone does not grant skills. Credit is c
 
 1. Switch to **HR**.
 2. Open HR analytics.
-3. Inspect gaps per employee–skill pair, affected employees and reasons for missing next steps; compare mandatory and voluntary participation separately.
+3. Inspect gaps, participation, mandatory assignments and no-next-step cases.
 4. Use **import preview** with `data/demo/import-example.json`.
 5. Commit only after a valid preview.
 6. Verify that the imported employee appears and can be opened.
@@ -416,23 +404,13 @@ The test suite includes coverage for:
 - recommendation validation/fallback/cache behavior;
 - RU/KK/EN server/client localization.
 
-The repository also includes reviewer/live smoke scripts under `scripts/`:
-
-```bash
-npm run smoke:judge -- --all-locales
-npm run smoke:acceptance -- --base http://127.0.0.1:3000 --live --all-locales
-npx tsx scripts/conflict-smoke.ts --base http://127.0.0.1:3000
-```
-
-`npm test` and `npm run verify:source` do not call paid APIs. Live smoke checks create new profiles and use the configured provider or team gateway; they require live AI availability and may consume the team's API budget. Internal regression profiles A/B/C are synthetic tests, not hidden jury data: A covers conflicting skill/critical-target/history signals; B covers completion/prerequisite/cap constraints; C covers JSON+CSV imports, same-day confirmation, recalculation, idempotency, plan budgets and an actual process restart. Results and limitations are tied to the tested application SHA in [ACCEPTANCE](docs/ACCEPTANCE.md).
+The repository also includes reviewer/live smoke scripts under `scripts/`.
 
 ---
 
 ## 11. Data and persistence
 
-The case dataset is stored under `data/source/` and contains employees, events, skills, role profiles and activity history. Source files remain immutable. Domain calculations use `2026-10-01` by default; real action timestamps are recorded separately. Demo time can be changed explicitly through `2026-12-31`, and scheduled completions cannot precede their catalog session.
-
-HR accepts an employee wrapper, array or single complete source-schema profile, plus history CSV or API rows. Identical re-imports are no-ops; conflicting IDs and invalid references/ranges/dates are rejected. An unknown manager is retained with a warning. See the [source schema](data/source/README.ru.md) and [demo import fixture](data/demo/import-example.json).
+The case dataset is stored under `data/source/` and contains employees, events, skills, role profiles and activity history.
 
 Runtime state is persisted in SQLite. Default local path:
 
@@ -477,19 +455,6 @@ This remains a competition/demo application. It does **not** claim production en
 - External/live AI availability depends on configured credentials/gateway/network. The application exposes fallback modes instead of presenting fallback output as live AI.
 - Rewards and some demo policies are product demonstration policies, not Halyk Bank commitments.
 - Recommendations support career development decisions; they do not automatically promote, grade, or rank employees.
-
-### Current release policies
-
-- Historical self_paced `date` используется как **proxy** даты completed после review; фактическое время завершения источником не доказано. Историческое завершение в день review остаётся в baseline. Только новое серверное подтверждение с доверенной отметкой приложения учитывается и в тот же день; импорт не может установить эту отметку.
-- Изменение только недельного бюджета сохраняет baseline, план и прогресс. Изменение самой цели создаёт новую версию плана.
-- Отчёт о подтверждённом результате сохраняется в SQLite в той же транзакции, что зачёт и награда; preview не изменяет состояние.
-- Roadmap — ограниченный поиск, а не доказательство отсутствия других путей. Навык может сделать курс ненужным, но не отменяет обязательный комплаенс/аттестацию.
-- Исторические навыки образуют lifetime baseline XP; награды начисляются только за новые подтверждения.
-- Интерфейс, исходный каталог и серверные сообщения переведены на RU/KK/EN. Имена людей, технологии и пользовательские тексты не переводятся автоматически. Казахский текст проверен агентом; независимая проверка носителем языка не заявляется.
-- Демо-наставник назначен всем seed/import профилям как прозрачное расширение; организация менеджеров взята из архива.
-- Настройки каталога, назначение advisor и политика наград зафиксированы в demo seed; отдельного HR-редактора этих политик пока нет.
-- Нет промышленного SSO, LMS-плеера, кадровых решений, уведомлений email/Telegram или доказанного ROI. Внешние предложения всегда требуют наставника; неизвестная цена/длительность обозначается на выбранном языке.
-- Данные исходного кейса используются только в официальном private репозитории и командной демонстрации; отдельного публичного зеркала нет.
 
 See [`docs/15_RELEASE_AND_LIMITATIONS.md`](docs/15_RELEASE_AND_LIMITATIONS.md) for additional project-specific caveats.
 
@@ -555,18 +520,6 @@ Do **not** add `-v` unless you intentionally want to delete the Docker volume an
 - [ ] Inspect analytics and audit.
 - [ ] For local reproduction, run `npm ci`, `npm run build`, `npm start`.
 - [ ] Run `npm test` and `npm run typecheck`.
-
-## 17. Языки и визуальная система Atlas
-
-Переключатель языка сохраняет выбор на этом устройстве. Формы сохраняют черновики; после смены языка рекомендации обновляются только по явному нажатию кнопки. Русский — язык по умолчанию. Клиент передаёт `Accept-Language`; API сохраняет прежние поля и добавляет локализованные сообщения и структурированные основания. Подробности: [контракт](docs/CONTRACT.md).
-
-Исходные файлы `data/source` неизменны. Переводы каталога хранятся отдельно и применяются только к совпадающим исходным значениям. При импорте используются оригинальные ID, коды ролей/грейдов и схема архива: подписи на экране не меняют формат файла.
-
-`npx tsx scripts/rebrand-live-smoke.ts` выполняет три платных запроса с собственным server-side ключом. `npm run smoke:judge -- --all-locales` проверяет три языка через gateway без локального ключа. Оба теста выводят mode/locale/latency и завершаются ошибкой при недоступном live AI. Большинство проверок работает без сети и без платного API.
-
-Official submission uses GitHub plus the organizer's form, which the captain submits separately; a push does not submit that form. Current release evidence is in [RELEASE_MANIFEST.json](docs/RELEASE_MANIFEST.json) and [ACCEPTANCE.md](docs/ACCEPTANCE.md); the rebranding history is in [REBRAND.md](docs/REBRAND.md). A later documentation commit can contain identical application code. The team's promotional API credits have a limited lifetime and shared budget; long-term API availability is not guaranteed.
-
-Implementation uses Codex; Atlas design uses `impeccable`. Third-party components are documented in [THIRD_PARTY.md](docs/THIRD_PARTY.md), and bundled Noto Sans uses the [SIL OFL](public/fonts/OFL.txt). Source case data is provided by HackAlem/Halyk; no external redistribution license is assumed.
 
 ---
 
