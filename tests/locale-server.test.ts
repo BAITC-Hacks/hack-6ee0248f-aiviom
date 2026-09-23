@@ -66,6 +66,13 @@ test('recommendation, external search and error envelopes follow the request loc
     const previewRu = await call('/api/import/preview', 'POST', { employees: [{ employee_id: 'invalid/id' }], history: [] }, 'ru-RU');
     assert.equal(previewRu.status, 200);
     assert.notEqual(preview.data.errors[0].message, previewRu.data.errors[0].message);
+    const oversized = await call('/api/import/preview', 'POST', { employees: [], padding: 'x'.repeat(2 * 1024 * 1024) }, 'kk-KZ');
+    assert.equal(oversized.status, 413);
+    assert.equal(oversized.data.code, 'TOO_LARGE');
+    assert.equal(oversized.data.message_key, 'error.too_large');
+    assert.match(oversized.data.user_message, /2 МБ/);
+    assert.equal(oversized.data.retryable, false);
+    assert.ok(oversized.data.request_id);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     rmSync(temp, { recursive: true, force: true });
