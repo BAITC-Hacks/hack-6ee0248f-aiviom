@@ -273,20 +273,18 @@ export function Insights({
     <div className="main-stack">
       <div
         className="section-tabs"
-        role="tablist"
+        role="group"
         aria-label={t("insights.section")}
       >
         <button
-          role="tab"
-          aria-selected={section === "overview"}
+          aria-pressed={section === "overview"}
           className={section === "overview" ? "active" : ""}
           onClick={() => setSection("overview")}
         >
           {t("insights.overview")}
         </button>
         <button
-          role="tab"
-          aria-selected={section === "import"}
+          aria-pressed={section === "import"}
           className={section === "import" ? "active" : ""}
           onClick={() => setSection("import")}
         >
