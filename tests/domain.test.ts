@@ -235,6 +235,15 @@ test('roadmap does not schedule dependent session before preparation effort can 
   d.events[1].format='online';d.events[1].upcoming_sessions=['2026-10-02','2026-10-20'];
   const road=buildRoadmap(d,buildProfile(d,'E1'),4);
   assert.equal(road.steps.find(s=>s.event_id==='GOAL'&&s.status==='planned')?.session,'2026-10-20');
+  assert.deepEqual(road.steps.find(s=>s.event_id==='PREP'&&s.status==='planned')?.unlocks_event_ids,['GOAL']);
+});
+
+test('roadmap does not claim an expired scheduled activity was unlocked', () => {
+  const d=fixture();
+  d.events[0].duration_hours=8;
+  d.events[1].format='online';d.events[1].upcoming_sessions=['2026-10-02'];
+  const road=buildRoadmap(d,buildProfile(d,'E1'),4);
+  assert.deepEqual(road.steps.find(s=>s.event_id==='PREP'&&s.status==='planned')?.unlocks_event_ids,[]);
 });
 
 test('milestone availability excludes completed courses and cap below current skill',()=>{
