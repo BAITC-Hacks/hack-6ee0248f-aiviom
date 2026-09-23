@@ -53,6 +53,8 @@ export interface Event {
   upcoming_sessions: string[];
 }
 export interface History {
+  /** Trusted server confirmation after the baseline review, never accepted by import. */
+  application_credit?: boolean;
   created_at?: string;
   record_id: string;
   employee_id: string;
@@ -68,6 +70,7 @@ export interface History {
   completion_time_quality?: "proxy" | "exact";
 }
 export interface Credit {
+  application_credit?: boolean;
   created_at?: string;
   credit_id: string;
   employee_id: string;
@@ -129,6 +132,22 @@ export interface Preview {
   coverage_before: number | null;
   coverage_after: number | null;
   unlocked_event_ids: string[];
+}
+export interface ConfirmedResult {
+  id: string;
+  employee_id: string;
+  event_id: string | null;
+  quest_id: string | null;
+  confirmed_at: string;
+  skills: { skill_id: string; before: number; after: number; delta: number }[];
+  coverage_before: number | null;
+  coverage_after: number | null;
+  total_gap_before: number;
+  total_gap_after: number;
+  unlocked_event_ids: string[];
+  next_event_id_before: string | null;
+  next_event_id_after: string | null;
+  xp_delta: number;
 }
 export interface Milestone {
   skill_id: string;
