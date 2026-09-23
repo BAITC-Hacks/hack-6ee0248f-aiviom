@@ -18,7 +18,7 @@ test('all UI locales have identical keys and interpolation parameters', () => {
 });
 
 test('literal UI translation calls resolve instead of displaying technical keys', () => {
-  const files = ['src/client/main.tsx','src/client/ui.tsx', ...readdirSync('src/client/screens').filter(f => f.endsWith('.tsx')).map(f => `src/client/screens/${f}`)];
+  const files = [...readdirSync('src/client').filter(f => f.endsWith('.tsx') && f !== 'i18n.tsx').map(f => `src/client/${f}`), ...readdirSync('src/client/screens').filter(f => f.endsWith('.tsx')).map(f => `src/client/screens/${f}`)];
   for (const file of files) {
     const source = readFileSync(file,'utf8');
     for (const match of source.matchAll(/\bt\(["']([^"']+)["']/g)) {
