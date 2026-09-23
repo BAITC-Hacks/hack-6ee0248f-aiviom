@@ -101,6 +101,9 @@ test('conflict profile A: target-critical System Design outranks weaker speaking
   catalog.push({ ...speaking, event_id: 'prior-speaking' }, { ...design, event_id: 'unrelated', develops_skills: [{ skill_id: 'unrelated', gain: 1, max_level: 5 }] });
   const facts = buildRecommendationFacts(p, 'en', catalog);
   assert.deepEqual(facts.candidates[0].relevant_history, { completed: 0, dropped: 1, no_show: 1, declined: 1, recent: { title: 'speaking-workshop', status: 'Stopped', date: '2026-08-03' }, same_type_format: { completed: 18, dropped: 1, no_show: 1, declined: 1 } });
+  assert.deepEqual(facts.candidates[0].allowed_priority_codes, ['target_gap']);
+  assert.deepEqual(facts.candidates[1].allowed_priority_codes, ['critical_target', 'target_gap']);
+  assert.deepEqual(facts.candidates[1].required_evidence_ids, ['grade:current', 'target:current', 'gap:design', 'history:relevant:design-lab', 'event:design-lab']);
   const recommender = createRecommender({ async choose(input) {
     assert.equal(input.candidates[1].critical_gain, 1);
     return { output: { recommendations: [{ event_id: 'design-lab', priority_code: 'critical_target', factor_keys: ['grade', 'skill_gap', 'history', 'target_requirements'], evidence_ids: ['grade:current', 'gap:design', 'history:relevant:design-lab', 'target:current', 'event:design-lab'], alternative_event_id: 'speaking-workshop' }], warnings: [] } };
@@ -149,7 +152,10 @@ test('participation priority rejects a negative history balance and recent statu
   const p = profile();
   for (const [i, status] of ['completed', 'no_show', 'declined'] .entries()) p.history.push({ record_id: `history-${i}`, employee_id: 'emp-1', event_id: 'past', date: `2026-09-0${i + 1}`, due_date: null, status, completion_pct: status === 'completed' ? 100 : 0, score: null, feedback_rating: null, assigned_by: 'self' });
   const past = event('past');
-  assert.equal(buildRecommendationFacts(p, 'ru', [past]).candidates[0].relevant_history.recent?.status, 'Отказано');
+  const facts = buildRecommendationFacts(p, 'ru', [past]);
+  assert.equal(facts.candidates[0].relevant_history.recent?.status, 'Отказано');
+  assert.equal(facts.candidates[0].allowed_priority_codes.includes('participation_fit'), false);
+  assert.deepEqual(facts.candidates[0].required_evidence_ids, ['grade:current', 'target:current', 'gap:s1', 'history:relevant:top', 'event:top']);
   assert.equal(buildRecommendationFacts(p, 'kk', [past]).candidates[0].relevant_history.recent?.status, 'Бас тартылды');
   const recommender = createRecommender({ async choose(facts) {
     const output = modelChoice(facts);
