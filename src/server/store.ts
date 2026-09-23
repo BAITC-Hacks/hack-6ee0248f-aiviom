@@ -8,7 +8,7 @@ import {buildProfile,loadSourceDataset} from '../domain/index.js';
 export interface Plan {goal:Goal|null;baseline_gap:number;version:number;weekly_budget:number;items:string[]}
 export interface Help {id:string;employee_id:string;event_id:string|null;reason:string;status:string;resolution?:string}
 export interface CompletionRequest {id:string;employee_id:string;event_id:string;session:string|null;evidence:string;status:string;created_at:string}
-export interface Ledger {id:string;employee_id:string;amount:number;source:string;created_at:string}
+export interface Ledger {id:string;employee_id:string;amount:number;source:string;created_at:string;reward_id?:string}
 export interface Audit {id:string;actor:string;action:string;target:string;reason:string;at:string}
 export interface State {version:number;as_of:string;dataset:Dataset;credits:Credit[];quests:Quest[];plans:Record<string,Plan>;help:Help[];completion_requests:CompletionRequest[];ledger:Ledger[];audit:Audit[];lifetime_max:Record<string,Levels>;advisor_assignments:Record<string,string[]>;primary_employee:string;manager_employee:string|null}
 const path=process.env.DATABASE_PATH||'.runtime/career-quest.sqlite';

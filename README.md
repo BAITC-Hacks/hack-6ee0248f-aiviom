@@ -1,97 +1,96 @@
-# Career Quest
+# Career Quest · AIVIOM
 
-**HackAlem AI 2026 — Halyk Bank Track**  
-**Repository / Project ID:** `hack-6ee0248f-aiviom`
+HackAlem AI, **Case 1 Halyk Bank**. AI-навигатор развития: профиль → цель и разрывы навыков → объяснимый следующий шаг → проверенный результат → пересчёт навыков и HR-срез.
 
-## Overview
+Приложение использует исходный синтетический набор организатора (200 сотрудников, 40 активностей, 60 навыков, 32 профиля роль/грейд, 2743 записи истории). Публичного рейтинга сотрудников нет. Соответствие навыкам не гарантирует повышения; XP не является грейдом.
 
-Career Quest is an AI-assisted employee development navigator.
+## Запуск из чистого clone
 
-The goal is to help employees understand:
+Нужны Git, интернет для установки зависимостей и **Node.js 22 LTS** (локально также проверяется Node20.20). SQLite встроен; отдельный сервер БД не нужен. На платформах без готового binary `better-sqlite3` могут понадобиться Python3, make и C++ compiler.
 
-- their current skill profile;
-- the requirements for their next career step;
-- the most relevant development activities;
-- why a specific activity is recommended;
-- how completing an activity changes their progress.
-
-The system also provides HR with a simple overview of skill gaps, participation, and employees who currently have no suitable recommended next step.
-
-## Core Flow
-
-```text
-Employee profile + history + skill requirements
-                    ↓
-             Skill-gap analysis
-                    ↓
-        Eligible activity selection
-                    ↓
-       AI-assisted recommendation
-                    ↓
-          Explainable next steps
-                    ↓
-        Activity completion/update
-                    ↓
-          Recalculated progress
+```bash
+git clone https://github.com/BAITC-Hacks/hack-6ee0248f-aiviom.git
+cd hack-6ee0248f-aiviom
+npm ci
+npm run build
+npm start
 ```
 
-## Main Requirements
+Открыть **http://127.0.0.1:3000**. Первый API-запрос автоматически создаёт schema, seed и отдельное demo workspace. Ctrl+C останавливает сервер, повторный `npm start` сохраняет данные. Кнопка «Сбросить демо» сбрасывает только текущее workspace. Не удаляйте SQLite-файл для обычного сброса.
 
-- Employee profile and career trajectory
-- 1–3 recommended development activities
-- Multi-factor recommendation explanation
-- Skill progress update after activity completion
-- Basic HR dashboard
-- Support for additional employee profiles and history
+Репозиторий private по правилам организатора: нужен выданный организатором доступ GitHub. Никакой персональный OpenAI аккаунт для локальной проверки не требуется, когда доступен командный judge gateway. **На текущем промежуточном commit gateway ещё не развёрнут: без ключа работает явно обозначенный расчётный режим. Финальный статус появится здесь после проверки.**
 
-## Dataset
+## AI и окружение
 
-The project uses the provided Career Quest dataset:
+`.env` необязателен. Для собственного API-ключа скопируйте `.env.example` в `.env` и заполните `OPENAI_API_KEY` только локально. Никогда не добавляйте ключ в Git. Приложение не читает Desktop/token.txt автоматически.
 
-```text
-employees.json
-events.json
-skills.json
-activity_history.csv
+| Переменная | По умолчанию | Значение |
+|---|---|---|
+|PORT|3000|Локальный HTTP порт|
+|HOST|127.0.0.1|Адрес прослушивания|
+|DATABASE_PATH|.runtime/career-quest.sqlite|Отдельная БД для каждой установки|
+|OPENAI_API_KEY|пусто|Server-side live OpenAI, если задан|
+|OPENAI_MODEL|gpt-5.4-mini|Разрешённая продуктовая модель|
+|JUDGE_GATEWAY_URL|https://career.aiviom.ai|Ограниченный командный gateway; `off` отключает|
+|AI_MODE|пусто|`offline` отключает удалённый gateway|
+|AI_BUDGET_USD|30|Консервативный общий предел резервирования вызовов|
+|DEMO_ENABLED|true|`false` отключает demo API; промышленная auth не реализована|
+
+Модель выбирает из допустимых полезных активностей по грейду, разрывам, истории и требованиям цели. Код считает допуск и арифметику, проверяет IDs, evidence и минимум три фактора. Режимы различаются: `live_ai`, `cached_live_ai`, `rules_fallback`, `unavailable`. Расчётный режим не выдаётся за LLM. Подробности: [AI](docs/AI.md), [формулы](docs/FORMULAS.md).
+
+Gateway принимает только профиль/историю одного сотрудника, заново строит кандидатов по серверному каталогу и не принимает произвольный prompt/model/URL. Workspace cookie, размер запроса, частота, allowlist модели и общий ledger ограничивают обращения. Ключ OpenAI остаётся на сервере. Резерв $0.05 на вызов консервативно сохраняется при неизвестной стоимости; он не является заявлением о фактическом расходе. Ledger не видит другие приложения команды.
+
+## Демо-сценарий
+
+Пользователи выбираются в переключателе «Роль для проверки». Это **явная sandbox-демонстрация пяти ролей**, не корпоративный SSO. Каждый посетитель получает отдельные данные; сервер проверяет права выбранной личности и scope, payload `role=hr` не даёт прав.
+
+1. **Сотрудник**: откройте профиль, цель, обязательную дорожку и добровольный путь; запросите рекомендации, сравните альтернативу и откройте preview. Preview не меняет данные.
+2. Добавьте доступный шаг в план и отправьте доказательство выполнения. **Наставник** принимает запрос; вернитесь к сотруднику и проверьте skills/XP. Повторное принятие не создаёт второй зачёт.
+3. **Практические проекты**: отправьте предложение. Наставник задаёт критерии и gain/cap. Одобрение идеи не повышает навыки. Готовое демо-доказательство уже есть в отдельной заявке.
+4. **Менеджер**: согласуйте ресурсный запрос, обработайте помощь и посмотрите свою команду по исходному `manager_id`.
+5. **Супервайзер**: проверьте правило эквивалентности и журнал решений. Он не меняет требования грейда.
+6. **HR**: откройте gaps, участие, незакрытые обязательные назначения, причины отсутствия шага. Импортируйте новый профиль через preview и commit; переключитесь на него для рекомендации.
+7. **Награды**: после принятого результата обменяйте личные баллы на пример награды. Это demo-политика AIVIOM, не обязательство Halyk.
+
+Данные рассчитаны на **2026-10-01**. Реальная дата действий хранится отдельно. Для scheduled event завершение допустимо только в/после реальной даты сессии каталога; переключатель даты меняет лишь демо-время (до 2026-12-31).
+
+## Импорт жюри
+
+HR принимает JSON wrapper `{ "employees": [...] }`, массив или одиночный полный профиль схемы исходного архива; история — CSV с исходным заголовком либо массив записей. Смотрите [исходный README](data/source/README.ru.md). Пример payload:
+
+```json
+{"employees":{"employees":["ЗАМЕНИТЕ НА ПОЛНЫЕ ОБЪЕКТЫ ИЗ СХЕМЫ"]},"history":"record_id,employee_id,event_id,date,due_date,status,completion_pct,score,feedback_rating,assigned_by\n"}
 ```
 
-The recommendation logic considers:
+Строка выше поясняет оболочку, **не является валидным профилем**. Возьмите полный профиль из `data/source/employees.json`, измените employee_id/full_name и при необходимости навыки/цель. История должна ссылаться на новые ID. Неизвестный manager допускается с предупреждением; неизвестные skill/event, некорректные диапазоны, даты и конфликтующие IDs отклоняются. Повтор идентичного импорта — no-op. Original файлы не меняются.
 
-- current role and grade;
-- target role or next grade;
-- skill gaps;
-- critical skills;
-- activity eligibility;
-- prerequisites;
-- previous participation;
-- expected skill gains.
+## Архитектура и проверки
 
-## Planned Architecture
+TypeScript, React19 + Vite6, Express4, SQLite/better-sqlite3, OpenAI SDK6, Zod3. Lockfile закрепляет фактические версии. `src/domain` — общие формулы/import/roadmap; `src/server` — HTTP, RBAC, SQLite-транзакции, ledger, demo seed; `src/ai` — проверяемый LLM; `src/client` — UI.
 
-```text
-Frontend
-   ↓
-Backend API
-   ↓
-Career / Recommendation Engine
-   ├── Skill-state calculation
-   ├── Gap analysis
-   ├── Activity eligibility
-   └── Recommendation evidence
-   ↓
-LLM layer
-   ↓
-Explainable recommendation
+```bash
+npm test
+npm run typecheck
+npm run build
+npm audit
 ```
 
-The exact technology stack and deployment instructions will be updated as development progresses.
+`npm test` не вызывает платный API. `npx tsx scripts/live-smoke.ts` — отдельный платный smoke только при заданном серверном ключе. Проверки покрывают review cutoff/proxy, caps, EV_036, prerequisites, preview, import, RBAC, изоляцию, идемпотентность и AI output. Карта/статус: [ACCEPTANCE](docs/ACCEPTANCE.md).
 
-## Running the Project
+## Политики и ограничения
 
-> Setup and launch instructions will be added after the initial implementation is complete.
+- Historical self_paced `date` используется как **proxy** даты completed после review; фактическое время завершения источником не доказано. Новые действия имеют отдельные даты и audit.
+- Roadmap — ограниченный поиск, а не доказательство отсутствия других путей. Навык может сделать курс ненужным, но не отменяет обязательный комплаенс/аттестацию.
+- Исторические навыки образуют lifetime baseline XP; награды начисляются только за новые подтверждения.
+- Основной язык RU, исходные названия каталога сохранены. Полный профессиональный перевод kk/en не заявлен.
+- Демо-наставник назначен всем seed/import профилям как прозрачное расширение; организация менеджеров взята из архива.
+- Нет промышленного SSO, LMS-плеера, кадровых решений, уведомлений email/Telegram или доказанного ROI. Внешние предложения всегда требуют наставника; неизвестная цена/длительность показывается как unknown.
+- Данные исходного кейса используются только в официальном private репозитории и командной демонстрации; отдельного публичного зеркала нет.
 
-## Project Status
+## Развёртывание и сдача
 
-🚧 **Work in progress — HackAlem AI hackathon prototype.**
+Конфигурация Docker: `compose.yml`, контейнер нового проекта слушает только `127.0.0.1:3500` сервера. [Изолированный deployment](docs/DEPLOY.md). Планируемый demo URL: **https://career.aiviom.ai**; в промежуточной версии статус NOT_DEPLOYED. Не считать URL работающим до проверки финального релиза.
 
-The README will be updated together with the implementation so that the documented functionality matches the final project.
+Команда AIVIOM. Реализация ведётся с Codex и изолированными агентами; сторонние компоненты перечислены выше. Дизайн выполнен по локальному skill `impeccable`. Данные предоставлены HackAlem/Halyk, лицензия их внешнего распространения не предполагается.
+
+Официальная подача: GitHub + форма организатора. Форму заполняет капитан; push не означает отправку формы. Финальный SHA и фактические результаты будут зафиксированы перед сдачей.

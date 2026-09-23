@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-const temp=mkdtempSync(join(tmpdir(),'cq-test-'));process.env.DATABASE_PATH=join(temp,'test.sqlite');delete process.env.OPENAI_API_KEY;
+const temp=mkdtempSync(join(tmpdir(),'cq-test-'));process.env.DATABASE_PATH=join(temp,'test.sqlite');delete process.env.OPENAI_API_KEY;process.env.AI_MODE='offline';
 const {app,errorHandler}=await import('../src/server/app.js');app.use(errorHandler);
 const {db,readState}=await import('../src/server/store.js');
 const server=app.listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));const base=`http://127.0.0.1:${(server.address()as any).port}`;
