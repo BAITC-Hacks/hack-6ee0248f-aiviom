@@ -38,9 +38,33 @@ export function buildAnalytics(dataset: Dataset, profiles: Profile[], asOf: stri
     h.status === 'completed' && !eventMap.get(h.event_id)?.mandatory && effectiveCompletedAt(h).date >= since90 && effectiveCompletedAt(h).date <= asOf)).length;
   const timely = histories.filter(h => h.status === 'completed' && h.due_date && h.completed_at && h.completion_time_quality === 'exact');
   const onTime = timely.filter(h => h.completed_at! <= h.due_date!).length;
-  const catalog_gaps = skill_gaps.filter(g => g.with_gap > 0 && !profiles.some(p => p.gaps.some(gap => gap.skill_id === g.skill_id && gap.gap > 0) &&
-    p.candidates.some(c => c.eligible && (c.deltas[g.skill_id] ?? 0) > 0)))
-    .map(g => ({ skill_id: g.skill_id, name: g.name, employees: g.with_gap }));
+  // Coverage is counted for each employee-skill pair. One employee with a useful
+  // course cannot hide another employee's blocked path for the same skill.
+  const catalog_gaps = skill_gaps.filter(g => g.with_gap > 0).map(g => {
+    const affected_employees = profiles.flatMap(p => {
+      if (!p.gaps.some(gap => gap.skill_id === g.skill_id && gap.gap > 0)) return [];
+      const useful = p.candidates.filter(c => (c.deltas[g.skill_id] ?? 0) > 0);
+      if (useful.some(c => c.eligible)) return [];
+      const reason = ['prerequisites_blocked', 'audience_blocked', 'no_session']
+        .find(code => useful.some(c => c.reasons.includes(code))) ?? 'catalog_gap';
+      return [{ employee_id: p.employee.employee_id, full_name: p.employee.full_name, reason }];
+    });
+    const by_reason: Record<string, number> = {};
+    for (const row of affected_employees) by_reason[row.reason] = (by_reason[row.reason] ?? 0) + 1;
+    return { skill_id: g.skill_id, name: g.name, with_gap: g.with_gap,
+      with_next_step: g.with_gap - affected_employees.length,
+      without_next_step: affected_employees.length,
+      employees: affected_employees.length, by_reason, affected_employees };
+  });
+  const participation_breakdown = (mandatory: boolean) => {
+    const rows = histories.filter(h => Boolean(eventMap.get(h.event_id)?.mandatory) === mandatory);
+    const by_status: Record<string, number> = {};
+    for (const row of rows) by_status[row.status] = (by_status[row.status] ?? 0) + 1;
+    return { total: rows.length, completed: by_status.completed ?? 0, completion_pct: pct(by_status.completed ?? 0, rows.length),
+      no_show: by_status.no_show ?? 0, declined: by_status.declined ?? 0,
+      overdue: mandatory ? rows.filter(h => h.status !== 'completed' && h.due_date && h.due_date < asOf).length : by_status.overdue ?? 0,
+      by_status };
+  };
   const event_groups = dataset.events.filter(e => !e.mandatory).map(e => ({ event_id: e.event_id, title: e.title,
     employees: profiles.filter(p => p.candidates.some(c => c.event.event_id === e.event_id && c.eligible && (c.U > 0 || c.B > 0))).length }))
     .filter(e => e.employees > 0).sort((a, b) => b.employees - a.employees || a.event_id.localeCompare(b.event_id));
@@ -51,6 +75,7 @@ export function buildAnalytics(dataset: Dataset, profiles: Profile[], asOf: stri
     as_of: asOf, scope: { profiles: profiles.length, history_records: histories.length }, skill_gaps,
     critical_gaps: { employees: profiles.filter(p => p.gaps.some(g => g.critical && g.gap > 0)).length },
     completions: { total: histories.length, completed, rate_pct: pct(completed, histories.length), by_status },
+    participation_breakdown: { mandatory: participation_breakdown(true), voluntary: participation_breakdown(false) },
     no_show: { eligible: occurredScheduled.length, no_show: noShows, rate_pct: pct(noShows, occurredScheduled.length) },
     mandatory_overdue: { count: overdue },
     no_next_step: { total: Object.values(noNext).reduce((a, b) => a + b, 0), by_reason: noNext },

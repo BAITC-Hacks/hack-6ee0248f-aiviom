@@ -75,13 +75,17 @@ export function effectiveCompletedAt(record: History): { date: string; quality: 
 
 export function skillsAt(dataset: Dataset, employee: Employee, asOf: string, credits: Credit[] = []): { skills: Levels; provenance: Profile['provenance'] } {
   const eventMap = new Map(dataset.events.map(e => [e.event_id, e]));
+  // Source/import history on the review date is already included in the reviewed baseline.
+  // Only a trusted application credit written after that review can be replayed on that date.
+  const afterReview = (date: string, applicationCredit?: boolean) =>
+    date > employee.last_review_date || date === employee.last_review_date && applicationCredit === true;
   const completions = dataset.history.filter(h => h.employee_id === employee.employee_id && h.status === 'completed')
     .map(h => ({ history: h, ...effectiveCompletedAt(h) }))
-    .filter(h => validDate(h.date) && h.date > employee.last_review_date && h.date <= asOf);
+    .filter(h => validDate(h.date) && afterReview(h.date, h.history.application_credit) && h.date <= asOf);
   const appliedRecordIds = new Set(completions.map(c => c.history.record_id));
   const actions = [
     ...completions.map(c => ({ id: c.history.record_id, date: c.date, quality: c.quality, gains: eventMap.get(c.history.event_id)?.develops_skills ?? [] })),
-    ...credits.filter(c => c.employee_id === employee.employee_id && validDate(c.completed_at) && c.completed_at > employee.last_review_date && c.completed_at <= asOf && !appliedRecordIds.has(c.source_id))
+    ...credits.filter(c => c.employee_id === employee.employee_id && validDate(c.completed_at) && afterReview(c.completed_at, c.application_credit) && c.completed_at <= asOf && !appliedRecordIds.has(c.source_id))
       .map(c => ({ id: c.credit_id, date: c.completed_at, quality: 'exact' as const, gains: c.gains })),
   ].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   let skills = { ...employee.skills };

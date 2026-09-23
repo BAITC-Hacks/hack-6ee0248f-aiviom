@@ -53,6 +53,18 @@ test('only completed after review contributes, sorted by effective completion da
   assert.equal(d.employees[0].skills.A, 1);
 });
 
+test('trusted same-day application is counted once while reviewed history remains baseline', () => {
+  const d = fixture();
+  d.history.push(history('REVIEWED', 'PREP', '2026-09-01', 'completed'));
+  d.history.push({ ...history('CONFIRMED', 'GOAL', '2026-09-01', 'completed'), application_credit: true });
+  const credits = [{ credit_id: 'C1', employee_id: 'E1', completed_at: '2026-09-01',
+    gains: [{ skill_id: 'B', gain: 1, max_level: 5 }], source_id: 'CONFIRMED', application_credit: true }];
+  const p = buildProfile(d, 'E1', { asOf: '2026-09-01', credits });
+  assert.deepEqual(p.skills, { A: 1, B: 1 });
+  assert.deepEqual(p.provenance.map(x => x.record_id), ['CONFIRMED']);
+  assert.equal(buildProfile(d, 'E1', { asOf: '2026-09-01', credits }).skills.B, 1);
+});
+
 test('future exact completion does not affect as-of skills, repeat rule or analytics', () => {
   const d = fixture();
   d.history.push(history('R1', 'PREP', '2026-09-20', 'completed', '2026-10-04'));
@@ -91,6 +103,11 @@ test('preview is pure, unlocks prerequisite, and roadmap sequences preparation f
   assert.equal(road.plan_hours, 4);
   assert.equal(road.weeks_lower_bound, 2);
   assert.equal(road.remaining_gaps.length, 0);
+  assert.equal(road.steps[0].title, 'PREP');
+  assert.equal(road.steps[0].hours, 2);
+  assert.deepEqual(road.steps[0].unlocks_event_ids, ['GOAL']);
+  assert.deepEqual(road.steps[0].skill_changes?.map(change => [change.skill_id, change.before, change.after, change.gap_before, change.gap_after]),
+    [['A', 1, 2, 1, 0]]);
 });
 
 test('EV_036 offers a different session, never repeats a completed session', () => {
@@ -142,6 +159,14 @@ test('import rejects bad skill, event and conflicting existing ID', () => {
   assert.ok(duplicateCompletion.errors.some(e => e.field === 'event_id'));
 });
 
+test('import cannot claim trusted same-day application credit', () => {
+  const d = fixture();
+  const imported = validateImport(d, { history: [{ ...history('SPOOF', 'PREP', '2026-09-01', 'completed'), application_credit: true }] });
+  assert.equal(imported.valid, true);
+  assert.equal(imported.history[0].application_credit, undefined);
+  assert.equal(buildProfile({ ...d, history: imported.history }, 'E1', { asOf: '2026-09-01' }).skills.A, 1);
+});
+
 test('analytics denominators and exact on-time exclude proxy completions', () => {
   const d = fixture();
   d.history.push(history('R1', 'PREP', '2026-09-20', 'completed'));
@@ -152,6 +177,56 @@ test('analytics denominators and exact on-time exclude proxy completions', () =>
   assert.equal(a.on_time.rate_pct, null);
   assert.equal(a.skill_gaps.find(g => g.skill_id === 'B')?.frequency_pct, 100);
   assert.equal(a.no_voluntary_completion_90d.count, 0);
+});
+
+test('catalog coverage is per employee-skill pair and separates participation', () => {
+  const d = fixture();
+  d.employees[0].skills = { A: 2, B: 0 };
+  d.employees.push({ ...structuredClone(d.employees[0]), employee_id: 'E2', full_name: 'Blocked Employee', skills: { A: 0, B: 0 } });
+  d.events.push({ ...event('MANDATORY', []), mandatory: true });
+  d.history.push(history('V1', 'PREP', '2026-09-20', 'declined'));
+  d.history.push({ ...history('M1', 'MANDATORY', '2026-09-20', 'in_progress'), due_date: '2026-09-25', assigned_by: 'hr' });
+  const analytics = buildAnalytics(d, d.employees.map(e => buildProfile(d, e.employee_id)), '2026-10-01');
+  const b = analytics.catalog_gaps.find(g => g.skill_id === 'B');
+  assert.deepEqual([b?.with_gap, b?.with_next_step, b?.without_next_step], [2, 1, 1]);
+  assert.deepEqual(b?.by_reason, { prerequisites_blocked: 1 });
+  assert.deepEqual(b?.affected_employees.map(e => e.employee_id), ['E2']);
+  assert.equal(analytics.participation_breakdown.voluntary.declined, 1);
+  assert.equal(analytics.participation_breakdown.mandatory.overdue, 1);
+  assert.equal(analytics.participation_breakdown.mandatory.total, 1);
+});
+
+test('conflict profile prioritizes critical target skill over numerically weakest rejected skill', () => {
+  const d = fixture();
+  d.employees[0].skills = { A: 1, B: 2 };
+  d.role_profiles[1].required_skills = { A: 3, B: 4 };
+  d.role_profiles[1].critical_skills = ['B'];
+  const publicEvent = { ...event('PUBLIC', [{ skill_id: 'A', gain: 1, max_level: 5 }]), type: 'workshop' };
+  const designEvent = { ...event('DESIGN', [{ skill_id: 'B', gain: 1, max_level: 5 }]), type: 'course' };
+  d.events = [publicEvent, designEvent, ...['SKIP1', 'SKIP2', 'SKIP3'].map(id => ({ ...event(id, []), type: 'workshop' }))];
+  d.history = ['SKIP1', 'SKIP2', 'SKIP3'].map((id, index) => history(`H${index}`, id, '2026-09-20', 'declined'));
+  const profile = buildProfile(d, 'E1');
+  assert.equal(profile.gaps.find(g => g.skill_id === 'A')?.current, 1);
+  assert.equal(profile.gaps.find(g => g.skill_id === 'B')?.current, 2);
+  assert.equal(profile.candidates.filter(c => c.eligible && c.U > 0)[0].event.event_id, 'DESIGN');
+  assert.ok(profile.candidates.find(c => c.event.event_id === 'DESIGN')!.K > 0);
+  assert.ok(profile.candidates.find(c => c.event.event_id === 'PUBLIC')!.H < profile.candidates.find(c => c.event.event_id === 'DESIGN')!.H);
+});
+
+test('completed, prerequisite and cap constraints reject superficially helpful events', () => {
+  const d = fixture();
+  d.events = [
+    event('DONE', [{ skill_id: 'B', gain: 1, max_level: 5 }]),
+    event('LOCKED', [{ skill_id: 'B', gain: 1, max_level: 5 }], { A: 3 }),
+    event('CAPPED', [{ skill_id: 'A', gain: 1, max_level: 1 }]),
+    event('VALID', [{ skill_id: 'A', gain: 1, max_level: 5 }]),
+  ];
+  d.history.push(history('OLD', 'DONE', '2026-09-01', 'completed'));
+  const candidates = buildProfile(d, 'E1').candidates;
+  assert.ok(candidates.find(c => c.event.event_id === 'DONE')!.reasons.includes('already_completed'));
+  assert.ok(candidates.find(c => c.event.event_id === 'LOCKED')!.reasons.includes('prerequisites_blocked'));
+  assert.equal(candidates.find(c => c.event.event_id === 'CAPPED')!.U, 0);
+  assert.equal(candidates.filter(c => c.eligible && c.U > 0).map(c => c.event.event_id).join(','), 'VALID');
 });
 
 test('roadmap does not schedule dependent session before preparation effort can finish', () => {
