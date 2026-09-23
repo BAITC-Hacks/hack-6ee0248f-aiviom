@@ -47,6 +47,8 @@ export function validateImport(dataset: Dataset, input: unknown): ImportResult {
   const profileKeys = new Set(dataset.role_profiles.map(p => `${p.role}\0${p.grade}`));
   const knownEmployees = new Map(dataset.employees.map(e => [e.employee_id, e]));
   const knownHistory = new Map(dataset.history.map(h => [h.record_id, h]));
+  const completionKey = (h: History) => `${h.employee_id}\0${h.event_id}${h.event_id === 'EV_036' ? `\0${h.date}` : ''}`;
+  const knownCompletions = new Set(dataset.history.filter(h => h.status === 'completed' && !eventMap.get(h.event_id)?.mandatory).map(completionKey));
   const employeeIds = new Set<string>();
   const recordIds = new Set<string>();
   const employees: Employee[] = [];
@@ -123,13 +125,22 @@ export function validateImport(dataset: Dataset, input: unknown): ImportResult {
     if (!nullable(raw.feedback_rating) && (!Number.isInteger(Number(raw.feedback_rating)) || Number(raw.feedback_rating) < 1 || Number(raw.feedback_rating) > 5)) add(row, 'feedback_rating', 'Expected integer 1–5 or blank');
     if (!nullable(raw.completed_at) && !validDate(String(raw.completed_at))) add(row, 'completed_at', 'Invalid ISO date');
     if (!nullable(raw.completed_at) && raw.status !== 'completed') add(row, 'completed_at', 'Only completed records have completion date');
+    if (!nullable(raw.completed_at) && validDate(String(raw.date)) && validDate(String(raw.completed_at)) && String(raw.completed_at) < String(raw.date))
+      add(row, 'completed_at', 'Completion before enrollment/session');
     if (errors.length > start) return;
     const item = normalizeHistory(raw);
     const existing = knownHistory.get(item.record_id);
     if (existing) {
       if (stable(existing) !== stable(item)) add(row, 'record_id', 'Existing ID has conflicting content');
       else warnings.push(`History ${item.record_id} already exists; no-op`);
-    } else history.push(item);
+    } else {
+      if (item.status === 'completed' && !event?.mandatory) {
+        const key = completionKey(item);
+        if (knownCompletions.has(key)) add(row, 'event_id', item.event_id === 'EV_036' ? 'Session already completed' : 'Event already completed');
+        else knownCompletions.add(key);
+      }
+      if (errors.length === start) history.push(item);
+    }
   });
   return { valid: errors.length === 0, errors, warnings, employees, history, counts: { employees: employees.length, history: history.length } };
 }

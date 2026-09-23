@@ -43,6 +43,7 @@ export function findTarget(dataset: Dataset, employee: Employee, override?: Goal
     source = goal ? 'next_grade' : 'none';
   }
   const target = goal ? dataset.role_profiles.find(p => p.role === goal.target_role && p.grade === goal.target_grade) ?? null : null;
+  if (goal && !target) throw new Error(`Unknown goal profile: ${goal.target_role}/${goal.target_grade}`);
   return { goal, source: target ? source : 'none', target };
 }
 
@@ -169,7 +170,7 @@ export function buildProfile(dataset: Dataset, employeeId: string, options: { as
     (h.status !== 'completed' || effectiveCompletedAt(h).date <= as_of));
   const candidates = buildCandidates(dataset, employee, skills, history, gapMetrics.gaps, as_of);
   const mandatory = history.filter(h => dataset.events.some(e => e.event_id === h.event_id && e.mandatory) && h.status !== 'completed');
-  const useful = candidates.filter(c => c.eligible && (c.U > 0 || c.B > 0 || c.continuing));
+  const useful = candidates.filter(c => c.eligible && (c.U > 0 || c.B > 0));
   let no_next_reason: string | null = null;
   if (!target) no_next_reason = 'goal_missing';
   else if (gapMetrics.total_gap === 0) no_next_reason = 'goal_skills_met';

@@ -65,6 +65,19 @@ test('future exact completion does not affect as-of skills, repeat rule or analy
   assert.equal(after.candidates.find(c => c.event.event_id === 'PREP')?.eligible, false);
 });
 
+test('unknown explicit target is rejected rather than treated as a missing goal', () => {
+  assert.throws(() => buildProfile(fixture(), 'E1', { goal: { target_role: 'Unknown', target_grade: 'Senior' } }), /Unknown goal profile/);
+});
+
+test('unrelated in-progress activity does not conceal a missing useful next step', () => {
+  const d = fixture();
+  d.events = [event('OTHER', [])];
+  d.history.push(history('R1', 'OTHER', '2026-09-30', 'in_progress'));
+  const p = buildProfile(d, 'E1');
+  assert.equal(p.candidates[0].continuing, true);
+  assert.equal(p.no_next_reason, 'catalog_gap');
+});
+
 test('preview is pure, unlocks prerequisite, and roadmap sequences preparation first', () => {
   const d = fixture();
   const p = buildProfile(d, 'E1');
@@ -125,6 +138,8 @@ test('import rejects bad skill, event and conflicting existing ID', () => {
   assert.ok(conflict.errors.some(e => e.field === 'employee_id'));
   const invalidStatusPct = validateImport(d, { history: [{ ...history('R2', 'PREP', '2026-09-22', 'no_show'), completion_pct: 50 }] });
   assert.ok(invalidStatusPct.errors.some(e => e.field === 'completion_pct'));
+  const duplicateCompletion = validateImport(d, { history: [history('R2', 'PREP', '2026-09-22', 'completed'), history('R3', 'PREP', '2026-09-23', 'completed')] });
+  assert.ok(duplicateCompletion.errors.some(e => e.field === 'event_id'));
 });
 
 test('analytics denominators and exact on-time exclude proxy completions', () => {
