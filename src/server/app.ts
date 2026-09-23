@@ -240,10 +240,7 @@ route("get", "/api/employees", (_r, res) => {
     employees: s.dataset.employees.filter((e) => canRead(s, a, e.employee_id)),
   };
 });
-route("get", "/api/employees/:id/profile", (req, res) => {
-  const { state: s, actor: a } = context(res);
-  const id = param(req);
-  scope(s, a, id);
+function employeeView(s: State, id: string) {
   const p = profile(s, id),
     plan = s.plans[id];
   const ledger = s.ledger.filter((l) => l.employee_id === id);
@@ -263,14 +260,25 @@ route("get", "/api/employees/:id/profile", (req, res) => {
         : null,
     weekly_budget: plan?.weekly_budget ?? 4,
     plan_items: plan?.items ?? [],
+    plan_version: plan?.version ?? 0,
+    plan_baseline_gap: plan?.baseline_gap ?? null,
+    completion_requests: s.completion_requests.filter((r) => r.employee_id === id),
+    completion_results: (s.completion_results ?? []).filter((r) => r.employee_id === id).slice(-5),
     help_requests: s.help.filter((h) => h.employee_id === id),
   };
+}
+route("get", "/api/employees/:id/profile", (req, res) => {
+  const { state: s, actor: a } = context(res);
+  const id = param(req);
+  scope(s, a, id);
+  return employeeView(s, id);
 });
 route("put", "/api/employees/:id/goal", (req, res) =>
   change(res, (s, a) => {
     const id = param(req);
     own(s, a, id);
-    const goal =
+    const current = profile(s, id);
+    const goal = req.body.goal === undefined ? current.goal :
       req.body.goal === null
         ? null
         : z
@@ -292,16 +300,23 @@ route("put", "/api/employees/:id/goal", (req, res) =>
       .min(0)
       .max(40)
       .parse(req.body.weekly_budget ?? s.plans[id]?.weekly_budget ?? 4);
-    s.plans[id] = {
-      goal,
-      baseline_gap: 0,
-      version: (s.plans[id]?.version ?? 0) + 1,
-      weekly_budget: budget,
-      items: [],
-    };
-    s.plans[id].baseline_gap = profile(s, id).total_gap;
-    audit(s, a.id, "goal.change", id);
-    return profile(s, id);
+    const sameGoal = goal?.target_role === current.goal?.target_role &&
+      goal?.target_grade === current.goal?.target_grade;
+    if (sameGoal && s.plans[id]) {
+      s.plans[id].weekly_budget = budget;
+      audit(s, a.id, "plan.budget", id);
+    } else {
+      s.plans[id] = {
+        goal,
+        baseline_gap: 0,
+        version: (s.plans[id]?.version ?? 0) + 1,
+        weekly_budget: budget,
+        items: [],
+      };
+      s.plans[id].baseline_gap = profile(s, id).total_gap;
+      audit(s, a.id, "goal.change", id);
+    }
+    return employeeView(s, id);
   }),
 );
 route("get", "/api/employees/:id/roadmap", (req, res) => {

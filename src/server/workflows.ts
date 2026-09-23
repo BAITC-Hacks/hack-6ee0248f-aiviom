@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Gain, Identity, Quest } from "../shared/types.js";
+import type { ConfirmedResult, Gain, Identity, Profile, Quest } from "../shared/types.js";
+import { buildRoadmap } from "../domain/index.js";
 import {
   type State,
   audit,
@@ -10,6 +11,26 @@ import {
 } from "./store.js";
 import { requireThat, text } from "./errors.js";
 import { own, reviewer, role, scope } from "./access.js";
+function recordResult(s: State, before: Profile, after: Profile, source: {event_id: string | null; quest_id: string | null}, xp: number): ConfirmedResult {
+  const budget = s.plans[before.employee.employee_id]?.weekly_budget;
+  const beforeRoadmap = buildRoadmap(s.dataset, before, budget);
+  const afterRoadmap = buildRoadmap(s.dataset, after, budget);
+  const useful = (p: Profile) => p.candidates.filter((c) => c.eligible && (c.U > 0 || c.B > 0)).map((c) => c.event.event_id);
+  const oldUseful = new Set(useful(before));
+  const result: ConfirmedResult = {
+    id: randomUUID(), employee_id: before.employee.employee_id, ...source,
+    confirmed_at: stamp(),
+    skills: Object.entries(after.skills).filter(([id, level]) => level !== before.skills[id]).map(([skill_id, level]) => ({skill_id, before: before.skills[skill_id] ?? 0, after: level, delta: level - (before.skills[skill_id] ?? 0)})),
+    coverage_before: before.coverage, coverage_after: after.coverage,
+    total_gap_before: before.total_gap, total_gap_after: after.total_gap,
+    unlocked_event_ids: useful(after).filter((id) => !oldUseful.has(id)),
+    next_event_id_before: beforeRoadmap.steps.find((step) => step.status !== 'blocked')?.event_id ?? null,
+    next_event_id_after: afterRoadmap.steps.find((step) => step.status !== 'blocked')?.event_id ?? null,
+    xp_delta: xp,
+  };
+  (s.completion_results ??= []).push(result);
+  return result;
+}
 export function complete(
   s: State,
   actor: Identity,
@@ -44,7 +65,7 @@ export function complete(
       ),
       "Нет обязательного назначения на эту активность",
     );
-  const before = profile(s, input.employee_id);
+  const before = structuredClone(profile(s, input.employee_id));
   if (!event.mandatory) {
     const candidate = before.candidates.find(
       (c) => c.event.event_id === event.event_id,
@@ -86,6 +107,7 @@ export function complete(
     inProgress.completion_pct = 100;
     inProgress.completed_at = s.as_of;
     inProgress.completion_time_quality = "exact";
+    inProgress.application_credit = true;
   } else
     s.dataset.history.push({
       created_at: stamp(),
@@ -101,6 +123,7 @@ export function complete(
       assigned_by: "self",
       completed_at: s.as_of,
       completion_time_quality: "exact",
+      application_credit: true,
     });
   const after = profile(s, input.employee_id);
   const xp = creditReward(
@@ -111,7 +134,8 @@ export function complete(
     after.skills,
   );
   audit(s, actor.id, "completion.confirmed", key, input.evidence);
-  return { ok: true, duplicate: false, xp };
+  const result = recordResult(s, before, after, {event_id: event.event_id, quest_id: null}, xp);
+  return { ok: true, duplicate: false, xp, result };
 }
 export function questFor(s: State, actor: Identity, id: string) {
   const q = s.quests.find((q) => q.id === id);
@@ -306,7 +330,7 @@ export function acceptQuest(
     "Это доказательство уже принято в другой заявке",
   );
   if (!guard(workspace, `quest:${id}`)) return q;
-  const before = profile(s, q.employee_id);
+  const before = structuredClone(profile(s, q.employee_id));
   s.credits.push({
     created_at: stamp(),
     credit_id: "C_" + id,
@@ -314,12 +338,14 @@ export function acceptQuest(
     completed_at: s.as_of,
     gains: q.gains,
     source_id: id,
+    application_credit: true,
   });
   q.status = "accepted";
   q.version++;
   q.decisions.push({ actor: a.id, action: "accept", reason, at: stamp() });
   const after = profile(s, q.employee_id);
-  creditReward(s, q.employee_id, id, before.skills, after.skills);
+  const xp = creditReward(s, q.employee_id, id, before.skills, after.skills);
+  recordResult(s, before, after, {event_id: null, quest_id: id}, xp);
   audit(s, a.id, "quest.accept", id, reason);
   return q;
 }
