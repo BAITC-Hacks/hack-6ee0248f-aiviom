@@ -56,6 +56,24 @@ test('simultaneous requests dedupe and a history mutation invalidates cache', as
   assert.equal(calls, 2);
 });
 
+test('candidate-specific 180-day history signal survives compact history truncation', async () => {
+  const p = profile();
+  p.candidates[0].H = 0.2;
+  for (let i = 0; i < 20; i++) p.history.push({ record_id: `record-${i}`, employee_id: 'emp-1', event_id: `past-${i}`, date: `2026-09-${String(i + 1).padStart(2, '0')}`, due_date: null, status: i % 2 ? 'no_show' : 'completed', completion_pct: 0, score: null, feedback_rating: null, assigned_by: 'self' });
+  const facts = buildRecommendationFacts(p);
+  assert.equal(facts.history.length, 12);
+  assert.equal(facts.history_count, 20);
+  assert.equal(facts.candidates.find(c => c.id === 'top')?.history_index, 0.2);
+  assert.match(facts.history_index_basis, /same type and format, last 180 days/);
+  assert.deepEqual(facts.fact_ids.find(f => f.id === 'history:similar:top'), { id: 'history:similar:top', factor: 'history' });
+  const rec = createRecommender({ async choose(input) {
+    const output = modelChoice(input, 'top');
+    output.recommendations[0].evidence_ids = ['grade:current', 'gap:s1', 'history:similar:top', 'target:current', 'event:top'];
+    return { output };
+  } });
+  assert.equal((await rec(p, { apiKey: 'test' })).mode, 'live_ai');
+});
+
 test('invalid IDs, missing factor evidence, and prompt injection fail closed', async () => {
   for (const alter of [
     (v: ReturnType<typeof modelChoice>) => { v.recommendations[0].event_id = 'invented'; },
@@ -90,6 +108,11 @@ test('fallback and empty states remain honest', async () => {
   const reached = profile();
   reached.gaps = [];
   assert.equal((await createRecommender()(reached, { apiKey: 'test' })).mode, 'unavailable');
+  let called = false;
+  const wrongModel = createRecommender({ async choose() { called = true; throw new Error('must not call'); } });
+  const invalid = await wrongModel(profile(), { apiKey: 'test', model: 'unapproved-model' });
+  assert.equal(invalid.mode, 'rules_fallback');
+  assert.equal(called, false);
 });
 
 test('external search accepts only public HTTPS URLs returned by the search tool', async () => {
@@ -114,4 +137,6 @@ test('external search accepts only public HTTPS URLs returned by the search tool
   assert.equal(result.opportunities.length, 1);
   assert.equal(result.opportunities[0].cost, 'unknown');
   assert.equal(result.opportunities[0].company_approved, false);
+  assert.equal((await search(input, { apiKey: 'test', model: 'unapproved-model' })).mode, 'unavailable');
+  assert.equal(calls, 1);
 });
